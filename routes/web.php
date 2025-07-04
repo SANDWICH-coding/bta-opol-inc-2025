@@ -23,7 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
-Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('school-year', SchoolYearController::class);
     Route::resource('year-level', YearLevelController::class);
     Route::resource('class-arm', ClassArmController::class);
@@ -31,11 +31,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
     Route::resource('billing-discount', BillingDiscController::class);
 });
 
-Route::prefix('user')->name('user.')->middleware(['auth','role:user'])->group(function () {
+Route::prefix('user')->name('user.')->middleware(['auth', 'role:user'])->group(function () {
     Route::resource('school-year', SchoolYearController::class);
 });
 
-Route::prefix('registrar')->name('registrar.')->middleware(['auth','role:registrar'])->group(function () {
+Route::prefix('registrar')->name('registrar.')->middleware(['auth', 'role:registrar'])->group(function () {
     Route::get('', [EnrollmentController::class, 'schoolYearList'])
         ->name('enrollment.school-year-list');
 
@@ -61,7 +61,7 @@ Route::prefix('registrar')->name('registrar.')->middleware(['auth','role:registr
     Route::resource('class-arm', ClassArmController::class);
 });
 
-Route::prefix('billing')->name('billing.')->middleware(['auth','role:billing'])->group(function () {
+Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])->group(function () {
     Route::get('', [BillingUserController::class, 'listSchoolYear'])->name('sy-list');
     Route::get('school-year/{id}', [BillingUserController::class, 'listYearLevel'])
         ->name('billing.yl-list');
@@ -79,6 +79,9 @@ Route::prefix('billing')->name('billing.')->middleware(['auth','role:billing'])-
 
     Route::get('generate-soa/student/{id}', [BillingUserController::class, 'generateSoa'])
         ->name('biling.generate-soa');
+
+    Route::get('generate-soa/all-student/{id}', [BillingUserController::class, 'generateAllSoa'])
+        ->name('billing.generate-all-soa');
 
     Route::get('manage/student/{id}', [EnrollmentController::class, 'studentBillingDetails'])
         ->name('biling.student');

@@ -2,9 +2,12 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CalendarDays, ChevronRight, Coins, CreditCard, FileText, GraduationCap, HandCoins, Layers3, Receipt, Users2, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronRight, Coins, CreditCard, FileText, GraduationCap, HandCoins, HardDriveDownload, Layers3, Loader2, Receipt, Users2, Wallet } from 'lucide-react';
 import CountUp from 'react-countup';
 import { CollapsibleComboboxWithSearch } from '@/components/ui/combobox-with-search';
+import { useState } from 'react';
+import axios from 'axios';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface ClassArm {
     id: number;
@@ -77,6 +80,12 @@ interface SyManagePageProps {
     overall: OverviewSummary;
 }
 
+type SoaProgressEntry = {
+    student: string;
+    status: 'success' | 'error';
+    message?: string;
+};
+
 export default function BillingYearLevelList({ schoolYear, students, overview, overall }: SyManagePageProps) {
 
     const today = new Date();
@@ -85,6 +94,34 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
         day: 'numeric',
         year: 'numeric',
     })
+
+
+
+    const [openModal, setOpenModal] = useState(false);
+
+    const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState<SoaProgressEntry[]>([]);
+    const [finished, setFinished] = useState(false);
+
+    const handleGenerate = async () => {
+        setOpenModal(true);
+        setLoading(true);
+        setFinished(false);
+        setProgress([]);
+
+        try {
+            const res = await axios.get(`/billing/generate-soa/all-student/${schoolYear.id}`);
+            setProgress(res.data.results);
+            setFinished(true);
+        } catch (err) {
+            setProgress([{ student: 'Error', status: 'error', message: 'Something went wrong.' }]);
+            setFinished(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
 
     return (
         <AppLayout
@@ -95,8 +132,53 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
         >
             <Head title={`${schoolYear.name}`} />
 
+            <Dialog open={openModal} onOpenChange={setOpenModal}>
+                <DialogContent className="max-w-md sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Generating SOAs</DialogTitle>
+                    </DialogHeader>
+
+                    {loading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                            <Loader2 className="animate-spin w-4 h-4" />
+                            Please wait while SOAs are being generated...
+                        </div>
+                    )}
+
+                    <div className="bg-muted p-3 rounded-md max-h-72 overflow-y-auto space-y-1 text-sm">
+                        {progress.map((entry, idx) => (
+                            <div key={idx}>
+                                {entry.status === 'success' ? (
+                                    <span className="text-green-600">✅ {entry.student}</span>
+                                ) : (
+                                    <span className="text-red-600">❌ {entry.student} - {entry.message}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {finished && (
+                        <div className="text-right mt-4">
+                            <Button onClick={() => setOpenModal(false)}>Close</Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             <div className="p-4 space-y-6">
-                <h1 className="text-2xl font-bold">{schoolYear.name}</h1>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h1 className="text-xl sm:text-2xl font-bold">{schoolYear.name}</h1>
+                    <Button
+                        variant="btapinky"
+                        size="lg"
+                        onClick={handleGenerate}
+                        disabled={loading}
+                        className="w-full sm:w-auto flex items-center gap-2"
+                    >
+                        <HardDriveDownload className="w-4 h-4" />
+                        {loading ? "Generating..." : "Generate SOA"}
+                    </Button>
+                </div>
 
                 {/* Highlight Card for Today’s Transaction */}
                 <Card className="w-full mb-6 bg-primary text-white shadow-md">

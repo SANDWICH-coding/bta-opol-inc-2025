@@ -322,22 +322,130 @@ class BillingUserController extends Controller
             'remainingBalance' => $soaData['remainingBalance'],
         ])->setPaper('legal', 'portrait');
 
-        $filePath = $pdf->output();
+        $fileContent = $pdf->output();
         $filename = "SOA-{$enrollment->student->lastName}-{$enrollment->student->firstName}-" . now()->format('YmdHis') . ".pdf";
 
+        // Step 1: Store to Laravel public storage
+        Storage::disk('public')->put("soa_files/{$filename}", $fileContent);
 
-        // Save to public disk
-        $storedPath = Storage::disk('public')->put("soa_files/{$filename}", $filePath);
-
-        // Save relative path to DB
+        // Step 2: Save path to DB
         SoaFile::create([
             'enrollment_id' => $enrollment->id,
-            'file_path' => "soa_files/{$filename}", // this is what you store
+            'file_path' => "soa_files/{$filename}",
             'file_name' => $filename,
             'generated_at' => now(),
         ]);
 
-        return response()->download(Storage::disk('public')->path("soa_files/{$filename}"));
+        // Step 3: Save locally to Desktop/<Month>/<YearLevel>/<ClassArm>/PDF
+        $home = $_SERVER['HOME'] ?? getenv('HOME'); // UNIX/macOS/Linux
+        $desktopPath = rtrim($home, '\\/') . DIRECTORY_SEPARATOR . 'Desktop';
+        $monthFolder = Carbon::now()->format('F'); // e.g., July
+
+        $yearLevelName = $enrollment->classArm->yearLevel->yearLevelName ?? 'YearLevel';
+        $classArmName = $enrollment->classArm->classArmName ?? 'ClassArm';
+
+        // Sanitize folder names
+        $yearLevelName = trim(preg_replace('/[^A-Za-z0-9_\- ]/', '', $yearLevelName));
+        $classArmName = trim(preg_replace('/[^A-Za-z0-9_\- ]/', '', $classArmName));
+
+        // Full folder path
+        $localFolderPath = $desktopPath . DIRECTORY_SEPARATOR .
+            $monthFolder . DIRECTORY_SEPARATOR .
+            $yearLevelName . DIRECTORY_SEPARATOR .
+            $classArmName;
+
+        // Create directory if not exists
+        if (!is_dir($localFolderPath)) {
+            mkdir($localFolderPath, 0777, true);
+        }
+
+        $localFilePath = $localFolderPath . DIRECTORY_SEPARATOR . $filename;
+        file_put_contents($localFilePath, $fileContent);
+
+        // Response
+        return response()->json([
+            'message' => 'SOA has been saved to Desktop successfully.',
+            'local_path' => $localFilePath,
+            'storage_path' => "soa_files/{$filename}",
+        ]);
     }
+
+    public function generateAllSoa($schoolYearId)
+    {
+        $enrollments = Enrollment::with([
+            'student',
+            'classArm.yearLevel.schoolYear',
+            'classArm.yearLevel.billings.category',
+            'billingDiscounts.category',
+            'payments.billing.category',
+        ])
+            ->whereHas('classArm.yearLevel.schoolYear', fn($q) => $q->where('id', $schoolYearId))
+            ->get();
+
+        if ($enrollments->isEmpty()) {
+            return response()->json(['message' => 'No enrollments found.'], 404);
+        }
+
+        $results = [];
+        $home = $_SERVER['HOME'] ?? getenv('HOME');
+        $desktopPath = rtrim($home, '\\/') . DIRECTORY_SEPARATOR . 'Desktop';
+        $monthFolder = Carbon::now()->format('F');
+
+        foreach ($enrollments as $enrollment) {
+            $studentName = "{$enrollment->student->firstName} {$enrollment->student->lastName}";
+
+            try {
+                $soaData = $this->prepareStatementData(
+                    $enrollment,
+                    $enrollment->classArm->yearLevel->billings,
+                    $enrollment->billingDiscounts
+                );
+
+                $pdf = Pdf::loadView('pdf.statement-of-account', [
+                    'enrollment' => $enrollment,
+                    'groupedSummary' => $soaData['groupedSummary'],
+                    'soaTableData' => $soaData['soaTableData'],
+                    'soaMonths' => $soaData['soaMonths'],
+                    'currentMonthIndex' => $soaData['currentMonthIndex'],
+                    'totalPaid' => $soaData['totalPaid'],
+                    'remainingBalance' => $soaData['remainingBalance'],
+                ])->setPaper('legal', 'portrait');
+
+                $fileContent = $pdf->output();
+                $filename = "SOA-{$enrollment->student->lastName}-{$enrollment->student->firstName}-" . now()->format('YmdHis') . ".pdf";
+
+                Storage::disk('public')->put("soa_files/{$filename}", $fileContent);
+
+                SoaFile::create([
+                    'enrollment_id' => $enrollment->id,
+                    'file_path' => "soa_files/{$filename}",
+                    'file_name' => $filename,
+                    'generated_at' => now(),
+                ]);
+
+                $yearLevelName = preg_replace('/[^A-Za-z0-9_\- ]/', '', $enrollment->classArm->yearLevel->yearLevelName ?? 'YearLevel');
+                $classArmName = preg_replace('/[^A-Za-z0-9_\- ]/', '', $enrollment->classArm->classArmName ?? 'ClassArm');
+
+                $localFolderPath = $desktopPath . DIRECTORY_SEPARATOR . $monthFolder . DIRECTORY_SEPARATOR . $yearLevelName . DIRECTORY_SEPARATOR . $classArmName;
+                if (!is_dir($localFolderPath))
+                    mkdir($localFolderPath, 0777, true);
+
+                $localFilePath = $localFolderPath . DIRECTORY_SEPARATOR . $filename;
+                file_put_contents($localFilePath, $fileContent);
+
+                $results[] = ['student' => $studentName, 'status' => 'success'];
+            } catch (\Throwable $e) {
+                $results[] = ['student' => $studentName, 'status' => 'error', 'message' => $e->getMessage()];
+            }
+
+            usleep(150000); // 150ms delay to help differentiate filenames
+        }
+
+        return response()->json([
+            'message' => 'SOA generation complete.',
+            'results' => $results,
+        ]);
+    }
+
 
 }
