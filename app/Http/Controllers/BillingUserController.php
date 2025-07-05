@@ -14,6 +14,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Storage;
+use Str;
+use ZipArchive;
 
 class BillingUserController extends Controller
 {
@@ -387,9 +389,7 @@ class BillingUserController extends Controller
         }
 
         $results = [];
-        $home = $_SERVER['HOME'] ?? getenv('HOME');
-        $desktopPath = rtrim($home, '\\/') . DIRECTORY_SEPARATOR . 'Desktop';
-        $monthFolder = Carbon::now()->format('F');
+        $timestampFolder = Carbon::now()->format('F-Y_d-H-i-s'); // e.g. July-2025_05-14-22
 
         foreach ($enrollments as $enrollment) {
             $studentName = "{$enrollment->student->firstName} {$enrollment->student->lastName}";
@@ -412,33 +412,28 @@ class BillingUserController extends Controller
                 ])->setPaper('legal', 'portrait');
 
                 $fileContent = $pdf->output();
-                $filename = "SOA-{$enrollment->student->lastName}-{$enrollment->student->firstName}-" . now()->format('YmdHis') . ".pdf";
-
-                Storage::disk('public')->put("soa_files/{$filename}", $fileContent);
-
-                SoaFile::create([
-                    'enrollment_id' => $enrollment->id,
-                    'file_path' => "soa_files/{$filename}",
-                    'file_name' => $filename,
-                    'generated_at' => now(),
-                ]);
+                $filename = "SOA-{$enrollment->student->lastName}-{$enrollment->student->firstName}.pdf";
 
                 $yearLevelName = preg_replace('/[^A-Za-z0-9_\- ]/', '', $enrollment->classArm->yearLevel->yearLevelName ?? 'YearLevel');
                 $classArmName = preg_replace('/[^A-Za-z0-9_\- ]/', '', $enrollment->classArm->classArmName ?? 'ClassArm');
 
-                $localFolderPath = $desktopPath . DIRECTORY_SEPARATOR . $monthFolder . DIRECTORY_SEPARATOR . $yearLevelName . DIRECTORY_SEPARATOR . $classArmName;
-                if (!is_dir($localFolderPath))
-                    mkdir($localFolderPath, 0777, true);
+                $storagePath = "soa_files/{$timestampFolder}/{$yearLevelName}/{$classArmName}/{$filename}";
 
-                $localFilePath = $localFolderPath . DIRECTORY_SEPARATOR . $filename;
-                file_put_contents($localFilePath, $fileContent);
+                Storage::disk('public')->put($storagePath, $fileContent);
+
+                SoaFile::create([
+                    'enrollment_id' => $enrollment->id,
+                    'file_path' => $storagePath,
+                    'file_name' => $filename,
+                    'generated_at' => now(),
+                ]);
 
                 $results[] = ['student' => $studentName, 'status' => 'success'];
             } catch (\Throwable $e) {
                 $results[] = ['student' => $studentName, 'status' => 'error', 'message' => $e->getMessage()];
             }
 
-            usleep(150000); // 150ms delay to help differentiate filenames
+            usleep(150000); // small delay
         }
 
         return response()->json([
@@ -447,5 +442,44 @@ class BillingUserController extends Controller
         ]);
     }
 
+    
+    public function downloadSoaZip($schoolYearId)
+    {
+        $soaFiles = SoaFile::whereHas(
+            'enrollment.classArm.yearLevel.schoolYear',
+            fn($q) =>
+            $q->where('id', $schoolYearId)
+        )->get();
+
+        if ($soaFiles->isEmpty()) {
+            return response()->json(['message' => 'No SOA files available for this school year.'], 404);
+        }
+
+        $zipFileName = "SOA_{$schoolYearId}_" . now()->format('Ymd_His') . ".zip";
+        $tempZipPath = storage_path("app/temp/{$zipFileName}");
+
+        // Ensure temp directory exists
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
+        $zip = new ZipArchive;
+        if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            foreach ($soaFiles as $file) {
+                $fullPath = storage_path("app/public/{$file->file_path}");
+
+                if (file_exists($fullPath)) {
+                    $relativePath = $file->file_name;
+                    $zip->addFile($fullPath, $relativePath);
+                }
+            }
+
+            $zip->close();
+        } else {
+            return response()->json(['message' => 'Failed to create ZIP file.'], 500);
+        }
+
+        return response()->download($tempZipPath)->deleteFileAfterSend(true);
+    }
 
 }

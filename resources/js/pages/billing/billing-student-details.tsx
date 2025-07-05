@@ -481,18 +481,29 @@ export default function BillingStudentDetailsPage() {
                                         },
                                     ].map((item, i) => (
                                         <TableRow key={i}>
-                                            <TableCell className="font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4 flex items-center gap-2">
-                                                <span className="md:block hidden">{item.label.text}</span>
-                                                <span className="md:hidden block">{item.label.icon}</span>
+                                            <TableCell colSpan={2} className="sm:hidden p-2 lg:p-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-muted-foreground">{item.label.text}</span>
+                                                    {typeof item.value === "string" ? (
+                                                        <span className="uppercase">{item.value}</span>
+                                                    ) : (
+                                                        item.value
+                                                    )}
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="sm:p-2 lg:p-4">
-                                                {typeof item.value === 'string' ? (
+
+                                            <TableCell className="hidden sm:table-cell font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4">
+                                                <span>{item.label.text}</span>
+                                            </TableCell>
+                                            <TableCell className="hidden sm:table-cell sm:p-2 lg:p-4">
+                                                {typeof item.value === "string" ? (
                                                     <span className="uppercase">{item.value}</span>
                                                 ) : (
                                                     item.value
                                                 )}
                                             </TableCell>
                                         </TableRow>
+
                                     ))}
                                 </TableBody>
                             </Table>
@@ -537,12 +548,22 @@ export default function BillingStudentDetailsPage() {
                                         },
                                     ].map((item, i) => (
                                         <TableRow key={i}>
-                                            <TableCell className="font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4 flex items-center gap-2">
-                                                <span className="hidden md:inline">{item.label.text}</span>
-                                                <span className="md:hidden">{item.label.icon}</span>
+                                            <TableCell colSpan={2} className="sm:hidden p-2 lg:p-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-muted-foreground">{item.label.text}</span>
+                                                    {typeof item.value === "string" ? (
+                                                        <span className="uppercase">{item.value}</span>
+                                                    ) : (
+                                                        item.value
+                                                    )}
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="sm:p-2 lg:p-4">
-                                                {typeof item.value === 'string' ? (
+
+                                            <TableCell className="hidden sm:table-cell font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4">
+                                                <span>{item.label.text}</span>
+                                            </TableCell>
+                                            <TableCell className="hidden sm:table-cell sm:p-2 lg:p-4">
+                                                {typeof item.value === "string" ? (
                                                     <span className="uppercase">{item.value}</span>
                                                 ) : (
                                                     item.value
@@ -560,6 +581,7 @@ export default function BillingStudentDetailsPage() {
                     <TabsList>
                         <TabsTrigger value="payments">Payment</TabsTrigger>
                         <TabsTrigger value="soa">Account</TabsTrigger>
+                        <TabsTrigger value="files">Files</TabsTrigger>
                     </TabsList>
 
                     {/* Payment History */}
@@ -634,11 +656,11 @@ export default function BillingStudentDetailsPage() {
                                     Summary of billing and payments.
                                 </CardDescription>
                                 <CardAction>
-                                    <Button asChild>
+                                    {/* <Button asChild>
                                         <a href={`/billing/generate-soa/student/${enrollment.student.id}`} target="_blank" rel="noopener noreferrer">
                                             Generate SOA
                                         </a>
-                                    </Button>
+                                    </Button> */}
                                     <Button onClick={handleAdd} variant="outline">Modify Discount</Button>
                                 </CardAction>
                             </CardHeader>
@@ -699,6 +721,7 @@ export default function BillingStudentDetailsPage() {
                                             </Table>
                                         </CardContent>
                                     </Card>
+
                                     {/* Payment summary */}
                                     <Card>
                                         <CardContent>
@@ -789,46 +812,51 @@ export default function BillingStudentDetailsPage() {
                                         </CardContent>
                                     </Card>
 
-                                    {/* SOA Files */}
-                                    <Card>
-                                        <CardContent>
-                                            <div>
-                                                {soaFiles.length > 0 ? (
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead>File Name</TableHead>
-                                                                <TableHead>Date Generated</TableHead>
-                                                                <TableHead className="text-right">Action</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {soaFiles.map((file) => (
-                                                                <TableRow key={file.id}>
-                                                                    <TableCell>{file.file_name}</TableCell>
-                                                                    <TableCell>{new Date(file.generated_at).toLocaleString()}</TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        <a
-                                                                            href={`/storage/${file.file_path}`}
-                                                                            target="_blank"
-                                                                            className="text-blue-600 hover:underline text-sm"
-                                                                        >
-                                                                            View PDF
-                                                                        </a>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground">No SOA files generated yet.</p>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+
                                 </div>
                             </CardContent>
 
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="files">
+                        {/* SOA Files */}
+                        <Card>
+                            <CardContent>
+                                <div>
+                                    {soaFiles.length > 0 ? (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>File Name</TableHead>
+                                                    <TableHead>Date Generated</TableHead>
+                                                    <TableHead className="text-right">Action</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {soaFiles.map((file) => (
+                                                    <TableRow key={file.id}>
+                                                        <TableCell>{file.file_name}</TableCell>
+                                                        <TableCell>{new Date(file.generated_at).toLocaleString()}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <a
+                                                                href={`/storage/${file.file_path}`}
+                                                                target="_blank"
+                                                                className="text-blue-600 hover:underline text-sm"
+                                                            >
+                                                                View PDF
+                                                            </a>
+                                                        </TableCell>
+
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">No SOA files generated yet.</p>
+                                    )}
+                                </div>
+                            </CardContent>
                         </Card>
                     </TabsContent>
                 </Tabs>

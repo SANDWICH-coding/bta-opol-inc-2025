@@ -80,11 +80,14 @@ Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])
     Route::get('generate-soa/student/{id}', [BillingUserController::class, 'generateSoa'])
         ->name('biling.generate-soa');
 
-    Route::get('generate-soa/all-student/{id}', [BillingUserController::class, 'generateAllSoa'])
-        ->name('billing.generate-all-soa');
+    Route::post('generate-soa/all-student/{id}', [BillingUserController::class, 'generateAllSoa'])
+        ->name('generate-all-soa');
 
     Route::get('manage/student/{id}', [EnrollmentController::class, 'studentBillingDetails'])
         ->name('biling.student');
+
+    Route::get('soa/download-zip/{schoolYearId}', [BillingUserController::class, 'downloadSoaZip'])->name('soa.download-zip');
+
 });
 
 require __DIR__ . '/settings.php';

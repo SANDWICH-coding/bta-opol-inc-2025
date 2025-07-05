@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
     Collapsible,
     CollapsibleContent,
@@ -48,6 +48,20 @@ export function CollapsibleComboboxWithSearch({
         acc[group].push(option)
         return acc
     }, {})
+
+    // 👇 Auto collapse on small screens
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 640) {
+                setOpen(false)
+            }
+        }
+
+        handleResize() // run on mount
+        window.addEventListener("resize", handleResize)
+
+        return () => window.removeEventListener("resize", handleResize)
+    }, [])
 
     return (
         <Collapsible open={open} onOpenChange={setOpen} className="w-full">

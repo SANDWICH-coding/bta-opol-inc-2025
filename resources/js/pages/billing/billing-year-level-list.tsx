@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CalendarDays, ChevronRight, Coins, CreditCard, FileText, GraduationCap, HandCoins, HardDriveDownload, Layers3, Loader2, Receipt, Users2, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronRight, Coins, CreditCard, FileText, GraduationCap, HandCoins, HardDriveDownload, Layers3, Loader2, PhilippinePeso, Receipt, Users2, Wallet, WalletCards } from 'lucide-react';
 import CountUp from 'react-countup';
 import { CollapsibleComboboxWithSearch } from '@/components/ui/combobox-with-search';
 import { useState } from 'react';
@@ -110,8 +110,16 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
         setProgress([]);
 
         try {
-            const res = await axios.get(`/billing/generate-soa/all-student/${schoolYear.id}`);
+            // Step 1: initiate the generation process via an API
+            const res = await axios.post(`/billing/generate-soa/all-student/${schoolYear.id}`);
             setProgress(res.data.results);
+
+            // Step 2: initiate download via window.location
+            const downloadUrl = res.data.download_url; // assume you return this from backend
+            if (downloadUrl) {
+                window.location.href = downloadUrl; // this triggers actual file download
+            }
+
             setFinished(true);
         } catch (err) {
             setProgress([{ student: 'Error', status: 'error', message: 'Something went wrong.' }]);
@@ -120,6 +128,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
             setLoading(false);
         }
     };
+
 
 
 
@@ -178,6 +187,13 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <HardDriveDownload className="w-4 h-4" />
                         {loading ? "Generating..." : "Generate SOA"}
                     </Button>
+{/* 
+                    <Button
+                        variant="outline"
+                        onClick={() => window.open(route('billing.soa.download-zip', schoolYear.id), '_blank')}
+                    >
+                        Download All as ZIP
+                    </Button> */}
                 </div>
 
                 {/* Highlight Card for Today’s Transaction */}
@@ -306,7 +322,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                             <div className="relative group bg-yellow-100 text-yellow-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
                                 {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
-                                    <HandCoins className="w-12 h-12 text-yellow-700" />
+                                    <PhilippinePeso className="w-12 h-12 text-yellow-700" />
                                 </div>
 
                                 {/* Content */}
@@ -328,7 +344,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                                 </div>
                             </div>
 
-                            {/* Digital Payments */}
+                            {/* GCash */}
                             <div className="relative group bg-purple-100 text-purple-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
                                 {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
@@ -337,9 +353,9 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
 
                                 {/* Content */}
                                 <div className="z-10 relative">
-                                    <p className="text-sm font-medium">Digital Payments</p>
+                                    <p className="text-sm font-medium">GCash</p>
                                     <p className="text-2xl font-bold">
-                                        ₱<CountUp end={overall.gcash + overall.bank_transfer} duration={1.5} separator="," decimals={2} />
+                                        ₱<CountUp end={overall.gcash} duration={1.5} separator="," decimals={2} />
                                     </p>
                                 </div>
 
@@ -347,12 +363,39 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-purple-800 hover:underline flex items-center gap-1"
-                                        onClick={() => console.log("View more digital payments")}
+                                        onClick={() => console.log("View GCash details")}
                                     >
                                         View more <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Bank Transfer */}
+                            <div className="relative group bg-purple-200 text-purple-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
+                                {/* Background Icon */}
+                                <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
+                                    <WalletCards className="w-13 h-13 text-purple-800" />
+                                </div>
+
+                                {/* Content */}
+                                <div className="z-10 relative">
+                                    <p className="text-sm font-medium">Bank Transfer</p>
+                                    <p className="text-2xl font-bold">
+                                        ₱<CountUp end={overall.bank_transfer} duration={1.5} separator="," decimals={2} />
+                                    </p>
+                                </div>
+
+                                {/* Hover Footer Button */}
+                                <div className="relative z-10 mt-4">
+                                    <button
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-purple-800 hover:underline flex items-center gap-1"
+                                        onClick={() => console.log("View bank transfer details")}
+                                    >
+                                        View more <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </CardContent>
                 </Card>
