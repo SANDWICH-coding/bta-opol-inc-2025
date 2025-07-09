@@ -772,7 +772,7 @@ export default function BillingStudentDetailsPage() {
                                                             }
 
                                                             const totalBalance = soaTableData
-                                                                .filter(row => row.category !== 'REGISTRATION' && row.category !== 'BOOKS')
+                                                                .filter(row => row.category !== 'REGISTRATION')
                                                                 .reduce((sum, row) => sum + row.monthlyStatus[i].balance, 0);
 
                                                             return (
@@ -1077,7 +1077,3 @@ export default function BillingStudentDetailsPage() {
         </AppLayout>
     )
 }
-
-
-
-
