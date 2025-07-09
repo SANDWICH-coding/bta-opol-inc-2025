@@ -442,7 +442,7 @@ class BillingUserController extends Controller
         ]);
     }
 
-    
+
     public function downloadSoaZip($schoolYearId)
     {
         $soaFiles = SoaFile::whereHas(

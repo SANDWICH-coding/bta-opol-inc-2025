@@ -735,27 +735,29 @@ export default function BillingStudentDetailsPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {soaTableData.filter(({ category }) => category !== 'REGISTRATION').map(({ category, monthlyStatus }, idx) => (
-                                                        <TableRow key={idx}>
-                                                            <TableCell className="font-medium">{category}</TableCell>
-                                                            {monthlyStatus.map((month, i) => (
-                                                                <TableCell key={i} className="text-right">
-                                                                    {i <= currentMonthIndex ? (
-                                                                        <>
-                                                                            <div className="text-green-700 font-semibold">
-                                                                                ₱{month.paid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                                            </div>
-                                                                            <div className="text-red-500 text-xs">
-                                                                                Bal: ₱{month.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <div className="text-gray-400 text-xs italic text-center">—</div>
-                                                                    )}
-                                                                </TableCell>
-                                                            ))}
-                                                        </TableRow>
-                                                    ))}
+                                                    {soaTableData
+                                                        .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS')
+                                                        .map(({ category, monthlyStatus }, idx) => (
+                                                            <TableRow key={idx}>
+                                                                <TableCell className="font-medium">{category}</TableCell>
+                                                                {monthlyStatus.map((month, i) => (
+                                                                    <TableCell key={i} className="text-right">
+                                                                        {i <= currentMonthIndex ? (
+                                                                            <>
+                                                                                <div className="text-green-700 font-semibold">
+                                                                                    ₱{month.paid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                                                                </div>
+                                                                                <div className="text-red-500 text-xs">
+                                                                                    Bal: ₱{month.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div className="text-gray-400 text-xs italic text-center">—</div>
+                                                                        )}
+                                                                    </TableCell>
+                                                                ))}
+                                                            </TableRow>
+                                                        ))}
 
                                                     {/* Total row per month */}
                                                     <TableRow className="border-t-2">
@@ -787,7 +789,7 @@ export default function BillingStudentDetailsPage() {
                                                         {Array.from({ length: 10 }).map((_, i) => {
                                                             if (i === 0) {
                                                                 const dueTodayTotal = soaTableData
-                                                                    .filter(row => row.category !== 'REGISTRATION')
+                                                                    .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS')
                                                                     .reduce((sum, row) => {
                                                                         return sum + row.monthlyStatus
                                                                             .slice(0, currentMonthIndex + 1)
@@ -811,8 +813,6 @@ export default function BillingStudentDetailsPage() {
                                             </Table>
                                         </CardContent>
                                     </Card>
-
-
                                 </div>
                             </CardContent>
 

@@ -187,7 +187,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <HardDriveDownload className="w-4 h-4" />
                         {loading ? "Generating..." : "Generate SOA"}
                     </Button>
-{/* 
+                    {/* 
                     <Button
                         variant="outline"
                         onClick={() => window.open(route('billing.soa.download-zip', schoolYear.id), '_blank')}

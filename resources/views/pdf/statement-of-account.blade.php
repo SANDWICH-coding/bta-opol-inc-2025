@@ -126,9 +126,9 @@
     <table>
         <thead>
             {{-- Due today row (only Total Balance column, full row colored) --}}
-            
-            <tr style="text-align: left; padding: 10px; font-weight: lighter; font-size: 15px; background-color:rgb(242, 219, 87);"> {{-- Light yellow background --}}
-                <td colspan="{{ collect($soaTableData)->filter(fn($r) => $r['category'] !== 'REGISTRATION')->count() + 1 }}"
+            <tr
+                style="text-align: left; padding: 10px; font-weight: lighter; font-size: 15px; background-color:rgb(242, 219, 87);">
+                <td colspan="{{ collect($soaTableData)->filter(fn($r) => $r['category'] !== 'REGISTRATION' && $r['category'] !== 'BOOKS')->count() + 1 }}"
                     class="text-right pr-4">
                     Due as of {{ $soaMonths[$currentMonthIndex] }}
                 </td>
@@ -136,7 +136,7 @@
                     Php {{
     number_format(
         collect($soaTableData)
-            ->filter(fn($row) => $row['category'] !== 'REGISTRATION')
+            ->filter(fn($row) => $row['category'] !== 'REGISTRATION' && $row['category'] !== 'BOOKS')
             ->reduce(function ($sum, $row) use ($currentMonthIndex) {
                 return $sum + collect($row['monthlyStatus'])
                     ->slice(0, $currentMonthIndex + 1)
@@ -144,23 +144,26 @@
             }, 0),
         2
     )
-        }}
+                }}
                 </td>
             </tr>
+
             <tr>
                 <th style="text-align: left; background-color: #f3f3f3; padding: 10px; font-weight: lighter; font-size: larger;"
-                    colspan="5  ">Monthly Payment Summary</th>
+                    colspan="5">Monthly Payment Summary</th>
             </tr>
+
             <tr>
                 <th></th>
                 @foreach($soaTableData as $row)
-                    @if($row['category'] !== 'REGISTRATION')
+                    @if($row['category'] !== 'REGISTRATION' && $row['category'] !== 'BOOKS')
                         <th class="text-center">{{ $row['category'] }}</th>
                     @endif
                 @endforeach
                 <th class="text-center">Total Balance</th>
             </tr>
         </thead>
+
         <tbody>
             @foreach($soaMonths as $i => $month)
                 <tr>
@@ -168,7 +171,7 @@
                     @php $rowTotal = 0; @endphp
 
                     @foreach($soaTableData as $row)
-                        @if($row['category'] !== 'REGISTRATION')
+                        @if($row['category'] !== 'REGISTRATION' && $row['category'] !== 'BOOKS')
                             @if($i <= $currentMonthIndex)
                                 @php
                                     $paid = $row['monthlyStatus'][$i]['paid'];
@@ -195,6 +198,7 @@
             @endforeach
         </tbody>
     </table>
+
 
     <table>
         <thead>
