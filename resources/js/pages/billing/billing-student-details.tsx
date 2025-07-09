@@ -736,7 +736,7 @@ export default function BillingStudentDetailsPage() {
                                                 </TableHeader>
                                                 <TableBody>
                                                     {soaTableData
-                                                        .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS')
+                                                        .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS' && category !== 'SCHOOL UNIFORM')
                                                         .map(({ category, monthlyStatus }, idx) => (
                                                             <TableRow key={idx}>
                                                                 <TableCell className="font-medium">{category}</TableCell>
@@ -772,7 +772,7 @@ export default function BillingStudentDetailsPage() {
                                                             }
 
                                                             const totalBalance = soaTableData
-                                                                .filter(row => row.category !== 'REGISTRATION')
+                                                                .filter(row => row.category !== 'REGISTRATION' && row.category !== 'BOOKS' && row.category !== 'SCHOOL UNIFORM')
                                                                 .reduce((sum, row) => sum + row.monthlyStatus[i].balance, 0);
 
                                                             return (
@@ -789,7 +789,7 @@ export default function BillingStudentDetailsPage() {
                                                         {Array.from({ length: 10 }).map((_, i) => {
                                                             if (i === 0) {
                                                                 const dueTodayTotal = soaTableData
-                                                                    .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS')
+                                                                    .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS' && category !== 'SCHOOL UNIFORM')
                                                                     .reduce((sum, row) => {
                                                                         return sum + row.monthlyStatus
                                                                             .slice(0, currentMonthIndex + 1)

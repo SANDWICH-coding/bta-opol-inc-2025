@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, CalendarDays, ChevronRight, Coins, CreditCard, FileText, GraduationCap, HandCoins, HardDriveDownload, Layers3, Loader2, PhilippinePeso, Receipt, Users2, Wallet, WalletCards } from 'lucide-react';
 import CountUp from 'react-countup';
 import { CollapsibleComboboxWithSearch } from '@/components/ui/combobox-with-search';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -86,7 +86,12 @@ type SoaProgressEntry = {
     message?: string;
 };
 
+
 export default function BillingYearLevelList({ schoolYear, students, overview, overall }: SyManagePageProps) {
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' }); // or "smooth"
+    }, []);
 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-PH', {
@@ -128,9 +133,6 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
             setLoading(false);
         }
     };
-
-
-
 
     return (
         <AppLayout
@@ -197,23 +199,22 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                 </div>
 
                 {/* Highlight Card for Today’s Transaction */}
-                <Card className="w-full mb-6 bg-primary text-white shadow-md">
+                <Card className="w-full mb-6 bg-primary text-white dark:bg-white dark:text-black shadow-md">
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle className="text-white flex items-center gap-2">
+                            <CardTitle className="text-white dark:text-black flex items-center gap-2">
                                 <CalendarDays className="w-5 h-5" />
                                 Today's transaction <span className="font-normal">({formattedDate})</span>
                             </CardTitle>
                         </div>
                     </CardHeader>
+
                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mt-2">
                         {/* OR Issued */}
                         <div className="flex justify-between items-center text-sm sm:flex-col sm:items-start sm:gap-1">
                             <span className="opacity-80">OR Issued</span>
                             <span className="text-2xl font-bold sm:mt-1">
-                                {overview.or_issued === 0 ? "-" : (
-                                    <CountUp end={overview.or_issued} duration={1.5} separator="," />
-                                )}
+                                {overview.or_issued === 0 ? "-" : overview.or_issued.toLocaleString()}
                             </span>
                         </div>
 
@@ -221,9 +222,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <div className="flex justify-between items-center text-sm sm:flex-col sm:items-start sm:gap-1">
                             <span className="opacity-80">Total collection</span>
                             <span className="text-2xl font-bold sm:mt-1">
-                                {overview.total === 0 ? "-" : (
-                                    <>₱<CountUp end={overview.total} duration={1.5} separator="," decimals={2} /></>
-                                )}
+                                {overview.total === 0 ? "-" : `₱${overview.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                             </span>
                         </div>
 
@@ -231,9 +230,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <div className="flex justify-between items-center text-sm sm:flex-col sm:items-start sm:gap-1">
                             <span className="opacity-80">Cash</span>
                             <span className="text-2xl font-bold sm:mt-1">
-                                {overview.cash === 0 ? "-" : (
-                                    <>₱<CountUp end={overview.cash} duration={1.5} separator="," decimals={2} /></>
-                                )}
+                                {overview.cash === 0 ? "-" : `₱${overview.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                             </span>
                         </div>
 
@@ -241,9 +238,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <div className="flex justify-between items-center text-sm sm:flex-col sm:items-start sm:gap-1">
                             <span className="opacity-80">GCash</span>
                             <span className="text-2xl font-bold sm:mt-1">
-                                {overview.gcash === 0 ? "-" : (
-                                    <>₱<CountUp end={overview.gcash} duration={1.5} separator="," decimals={2} /></>
-                                )}
+                                {overview.gcash === 0 ? "-" : `₱${overview.gcash.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                             </span>
                         </div>
 
@@ -251,9 +246,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         <div className="flex justify-between items-center text-sm sm:flex-col sm:items-start sm:gap-1">
                             <span className="opacity-80">Bank transfer</span>
                             <span className="text-2xl font-bold sm:mt-1">
-                                {overview.bank_transfer === 0 ? "-" : (
-                                    <>₱<CountUp end={overview.bank_transfer} duration={1.5} separator="," decimals={2} /></>
-                                )}
+                                {overview.bank_transfer === 0 ? "-" : `₱${overview.bank_transfer.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                             </span>
                         </div>
                     </CardContent>
@@ -269,20 +262,15 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
 
                             {/* OR Issued */}
                             <div className="relative group bg-green-100 text-green-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
-                                {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
                                     <FileText className="w-12 h-12 text-green-800" />
                                 </div>
-
-                                {/* Content */}
                                 <div className="z-10 relative">
                                     <p className="text-sm font-medium">OR Issued</p>
                                     <p className="text-2xl font-bold">
-                                        <CountUp end={overall.or_issued} duration={1.5} separator="," />
+                                        {overall.or_issued === 0 ? "-" : overall.or_issued.toLocaleString()}
                                     </p>
                                 </div>
-
-                                {/* Hover Footer Button */}
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-green-800 hover:underline flex items-center gap-1"
@@ -293,21 +281,17 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                                 </div>
                             </div>
 
+                            {/* Total Transactions */}
                             <div className="relative group bg-blue-100 text-blue-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
-                                {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
                                     <Receipt className="w-12 h-12 text-blue-800" />
                                 </div>
-
-                                {/* Content */}
                                 <div className="z-10 relative">
                                     <p className="text-sm font-medium">Total Transactions</p>
                                     <p className="text-2xl font-bold">
-                                        ₱<CountUp end={overall.total} duration={1.5} separator="," decimals={2} />
+                                        {overall.total === 0 ? "-" : `₱${overall.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                                     </p>
                                 </div>
-
-                                {/* Hover Footer Button */}
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-blue-800 hover:underline flex items-center gap-1"
@@ -320,20 +304,15 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
 
                             {/* Cash on Hand */}
                             <div className="relative group bg-yellow-100 text-yellow-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
-                                {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
                                     <PhilippinePeso className="w-12 h-12 text-yellow-700" />
                                 </div>
-
-                                {/* Content */}
                                 <div className="z-10 relative">
                                     <p className="text-sm font-medium">Cash</p>
                                     <p className="text-2xl font-bold">
-                                        ₱<CountUp end={overall.cash} duration={1.5} separator="," decimals={2} />
+                                        {overall.cash === 0 ? "-" : `₱${overall.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                                     </p>
                                 </div>
-
-                                {/* Hover Footer Button */}
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-yellow-800 hover:underline flex items-center gap-1"
@@ -346,20 +325,15 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
 
                             {/* GCash */}
                             <div className="relative group bg-purple-100 text-purple-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
-                                {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
                                     <CreditCard className="w-13 h-13 text-purple-700" />
                                 </div>
-
-                                {/* Content */}
                                 <div className="z-10 relative">
                                     <p className="text-sm font-medium">GCash</p>
                                     <p className="text-2xl font-bold">
-                                        ₱<CountUp end={overall.gcash} duration={1.5} separator="," decimals={2} />
+                                        {overall.gcash === 0 ? "-" : `₱${overall.gcash.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                                     </p>
                                 </div>
-
-                                {/* Hover Footer Button */}
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-purple-800 hover:underline flex items-center gap-1"
@@ -372,20 +346,15 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
 
                             {/* Bank Transfer */}
                             <div className="relative group bg-purple-200 text-purple-900 rounded-xl p-6 overflow-hidden flex flex-col justify-between min-h-[140px]">
-                                {/* Background Icon */}
                                 <div className="absolute right-2 bottom-2 transform scale-[2.5] rotate-12 opacity-10 pointer-events-none">
                                     <WalletCards className="w-13 h-13 text-purple-800" />
                                 </div>
-
-                                {/* Content */}
                                 <div className="z-10 relative">
                                     <p className="text-sm font-medium">Bank Transfer</p>
                                     <p className="text-2xl font-bold">
-                                        ₱<CountUp end={overall.bank_transfer} duration={1.5} separator="," decimals={2} />
+                                        {overall.bank_transfer === 0 ? "-" : `₱${overall.bank_transfer.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                                     </p>
                                 </div>
-
-                                {/* Hover Footer Button */}
                                 <div className="relative z-10 mt-4">
                                     <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity text-sm text-purple-800 hover:underline flex items-center gap-1"
@@ -399,6 +368,7 @@ export default function BillingYearLevelList({ schoolYear, students, overview, o
                         </div>
                     </CardContent>
                 </Card>
+
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-1">
