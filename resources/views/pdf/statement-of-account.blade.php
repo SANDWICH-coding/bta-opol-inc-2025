@@ -223,10 +223,7 @@
                     <td>
                         @if(count($item['discountDescriptions']))
                             @foreach($item['discountDescriptions'] as $desc)
-                                <div>
-                                    — <span>{{ number_format($desc['amount'], 2) }}</span>
-                                    ( {{ $desc['description'] }} )
-                                </div>
+                                <div>— {{ $desc }}</div>
                             @endforeach
                         @else
                             <span class="text-muted">—</span>
@@ -237,6 +234,7 @@
                     <td class="text-right text-red"> {{ number_format($item['remaining'], 2) }}</td>
                 </tr>
             @endforeach
+
             <tr>
                 <td colspan="3" class="text-right font-bold">TOTAL</td>
                 <td class="text-right font-bold text-green">Php

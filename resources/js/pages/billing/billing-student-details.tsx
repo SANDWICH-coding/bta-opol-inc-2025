@@ -284,8 +284,6 @@ export default function BillingStudentDetailsPage() {
         };
     });
 
-
-
     const paymentsByCategoryAndMonth = {} as Record<string, Record<string, number>>;
 
     paymentHistory.forEach(payment => {
@@ -656,11 +654,11 @@ export default function BillingStudentDetailsPage() {
                                     Summary of billing and payments.
                                 </CardDescription>
                                 <CardAction>
-                                    {/* <Button asChild>
+                                    <Button asChild>
                                         <a href={`/billing/generate-soa/student/${enrollment.student.id}`} target="_blank" rel="noopener noreferrer">
                                             Generate SOA
                                         </a>
-                                    </Button> */}
+                                    </Button>
                                     <Button onClick={handleAdd} variant="outline">Modify Discount</Button>
                                 </CardAction>
                             </CardHeader>

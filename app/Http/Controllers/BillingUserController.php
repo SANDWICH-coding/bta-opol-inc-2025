@@ -211,80 +211,132 @@ class BillingUserController extends Controller
         $studentDiscounts = $studentDiscounts ?? collect();
         $payments = $enrollment->payments ?? collect();
 
-        $grouped = [];
-
+        // Step 1: Group billings by category
+        $billingByCategory = [];
         foreach ($billingItems as $billing) {
             $category = $billing->category->name;
-            $billingAmount = (float) $billing->amount;
-
-            if (!isset($grouped[$category])) {
-                $grouped[$category] = [
+            if (!isset($billingByCategory[$category])) {
+                $billingByCategory[$category] = [
                     'category' => $category,
-                    'billingAmount' => 0,
-                    'discountDescriptions' => [],
-                    'totalAfterDiscount' => 0,
-                    'paidAmount' => 0,
-                    'remaining' => 0,
+                    'totalBilling' => 0,
+                    'billingDescriptions' => [],
                 ];
             }
 
-            $grouped[$category]['billingAmount'] += $billingAmount;
-
-            // Get matching discounts for this category
-            $discounts = $studentDiscounts->filter(fn($d) => $d->category->name === $category);
-
-            $totalDiscount = 0;
-            foreach ($discounts as $disc) {
-                $amount = $disc->value === 'percentage'
-                    ? ($billingAmount * ((float) $disc->amount / 100))
-                    : (float) $disc->amount;
-
-                $grouped[$category]['discountDescriptions'][] = [
-                    'description' => $disc->description,
-                    'amount' => $amount,
-                ];
-
-                $totalDiscount += $amount;
-            }
-
-            $netAmount = max($billingAmount - $totalDiscount, 0);
-            $grouped[$category]['totalAfterDiscount'] += $netAmount;
-
-            $paidAmount = $payments
-                ->filter(fn($p) => $p->billing->category->name === $category)
-                ->sum(fn($p) => (float) $p->amount);
-
-            $grouped[$category]['paidAmount'] += $paidAmount;
-            $grouped[$category]['remaining'] = $grouped[$category]['totalAfterDiscount'] - $grouped[$category]['paidAmount'];
+            $billingByCategory[$category]['totalBilling'] += (float) $billing->amount;
+            $billingByCategory[$category]['billingDescriptions'][] = $billing->description ?? '—';
         }
 
-        $groupedSummary = array_values($grouped);
+        // Step 2: Group student discounts by category
+        $discountByCategory = [];
+        foreach ($studentDiscounts as $disc) {
+            $category = $disc->category->name;
+            if (!isset($discountByCategory[$category])) {
+                $discountByCategory[$category] = [];
+            }
+            $discountByCategory[$category][] = $disc;
+        }
+
+        // Step 3: Group payments by category
+        $paymentsByCategory = [];
+        foreach ($payments as $payment) {
+            $category = $payment->billing->category->name;
+            if (!isset($paymentsByCategory[$category])) {
+                $paymentsByCategory[$category] = 0;
+            }
+            $paymentsByCategory[$category] += (float) $payment->amount;
+        }
+
+        // Step 4: Prepare groupedSummary (category breakdown)
+        $groupedSummary = [];
+        foreach ($billingByCategory as $category => $data) {
+            $totalBilling = $data['totalBilling'];
+            $discounts = $discountByCategory[$category] ?? [];
+
+            $totalDiscount = 0;
+            $discountDescriptions = [];
+
+            foreach ($discounts as $disc) {
+                if ($disc->value === 'percentage') {
+                    $amount = $totalBilling * ((float) $disc->amount / 100);
+                    $totalDiscount += $amount;
+                    $discountDescriptions[] = "{$disc->description} ({$disc->amount}%)";
+                } else {
+                    $amount = (float) $disc->amount;
+                    $totalDiscount += $amount;
+                    $discountDescriptions[] = "{$disc->description} (₱{$amount})";
+                }
+            }
+
+            $totalAfterDiscount = max($totalBilling - $totalDiscount, 0);
+            $paidAmount = $paymentsByCategory[$category] ?? 0;
+            $remaining = max($totalAfterDiscount - $paidAmount, 0);
+
+            $groupedSummary[] = [
+                'category' => $category,
+                'billingAmount' => $totalBilling,
+                'discountAmount' => $totalDiscount,
+                'discountDescriptions' => $discountDescriptions,
+                'totalAfterDiscount' => $totalAfterDiscount,
+                'billingDescriptions' => $data['billingDescriptions'],
+                'paidAmount' => $paidAmount,
+                'remaining' => $remaining,
+            ];
+        }
+
+        // Step 5: Monthly SOA Table
         $soaMonths = ['June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March'];
         $currentMonthIndex = max(min(Carbon::now()->month - 6, 9), 0);
 
         $soaTableData = [];
+        foreach ($groupedSummary as $item) {
+            $category = $item['category'];
+            $totalDue = $item['totalAfterDiscount'];
 
-        foreach ($grouped as $category => $summary) {
-            $monthlyStatus = [];
+            // Get payments sorted chronologically by payment date
+            $categoryPayments = $payments
+                ->filter(fn($p) => $p->billing->category->name === $category)
+                ->sortBy('payment_date')
+                ->map(fn($p) => (float) $p->amount)
+                ->values()
+                ->toArray();
 
-            $remaining = $summary['remaining'];
-            $deferStartMonth = $category === 'BOOKS' ? 2 : 0;
-            $numMonths = 10 - $deferStartMonth;
-            $monthlyBalance = $numMonths > 0 ? round($remaining / $numMonths, 2) : 0;
+            $startMonthIndex = $category === 'BOOKS' ? 2 : 0;
+            $monthCount = $category === 'BOOKS' ? 8 : 10;
+            $perMonth = $monthCount > 0 ? $totalDue / $monthCount : 0;
 
+            $monthStatus = array_fill(0, 10, ['paid' => 0, 'balance' => 0]);
+
+            // Set fixed monthly balances
+            for ($i = $startMonthIndex; $i < $startMonthIndex + $monthCount; $i++) {
+                if ($i >= 10)
+                    break;
+                $monthStatus[$i]['balance'] = round($perMonth, 2);
+            }
+
+            // Distribute payments to months
+            $remainingPayments = $categoryPayments;
             for ($i = 0; $i < 10; $i++) {
-                $monthPaid = $this->getPaymentForMonth($payments, $category, $i);
-                $balance = $i >= $deferStartMonth ? $monthlyBalance : 0;
+                $expected = $monthStatus[$i]['balance'];
+                $paid = 0;
 
-                $monthlyStatus[] = [
-                    'paid' => $monthPaid,
-                    'balance' => max(0, $balance - $monthPaid),
-                ];
+                while (!empty($remainingPayments) && $paid < $expected) {
+                    $toApply = min($expected - $paid, $remainingPayments[0]);
+                    $paid += $toApply;
+                    $remainingPayments[0] -= $toApply;
+
+                    if ($remainingPayments[0] <= 0) {
+                        array_shift($remainingPayments);
+                    }
+                }
+
+                $monthStatus[$i]['paid'] = round($paid, 2);
+                $monthStatus[$i]['balance'] = round(max($expected - $paid, 0), 2);
             }
 
             $soaTableData[] = [
                 'category' => $category,
-                'monthlyStatus' => $monthlyStatus,
+                'monthlyStatus' => $monthStatus,
             ];
         }
 
@@ -441,7 +493,6 @@ class BillingUserController extends Controller
             'results' => $results,
         ]);
     }
-
 
     public function downloadSoaZip($schoolYearId)
     {
