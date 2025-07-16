@@ -386,14 +386,19 @@ export default function BillingStudentDetailsPage() {
     const [paymentRows, setPaymentRows] = useState([{ billing_id: null, amount: '', payment_method: '' }])
 
     const groupedBillingItems = billingItems.reduce((acc, item) => {
-        const summary = groupedSummary.find(g => g.category === item.category.name)
+        const categoryName = item.category.name
+        const summary = groupedSummary.find(g => g.category === categoryName)
         const remaining = summary?.remaining ?? 0
-        if (remaining <= 0) return acc
 
-        if (!acc[item.category.name]) acc[item.category.name] = []
-        acc[item.category.name].push(item)
+        // Skip only if remaining is 0 and NOT SCHOOL UNIFORM
+        if (remaining <= 0 && categoryName !== "SCHOOL UNIFORM") return acc
+
+        if (!acc[categoryName]) acc[categoryName] = []
+        acc[categoryName].push(item)
+
         return acc
     }, {} as Record<string, BillingItem[]>)
+
 
     const updateRow = (index: number, field: keyof typeof paymentRows[number], value: any) => {
         const updated = [...paymentRows]
