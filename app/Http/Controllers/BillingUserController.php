@@ -264,7 +264,7 @@ class BillingUserController extends Controller
                 } else {
                     $amount = (float) $disc->amount;
                     $totalDiscount += $amount;
-                    $discountDescriptions[] = "{$disc->description} (₱{$amount})";
+                    $discountDescriptions[] = "{$disc->description} (Php{$amount})";
                 }
             }
 
