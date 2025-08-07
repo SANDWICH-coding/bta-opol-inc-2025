@@ -69,6 +69,7 @@ interface Payment {
     or_number: string;
     payment_date: string;
     payment_method: string;
+    remarks: string;
     amount: string;
     billing: {
         description: string;
@@ -181,6 +182,7 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
         }, {
             onSuccess: () => {
                 toast.success('Billing item added successfully');
+                resetForm(); // ✅ Reset fields
                 setShowBillItemModal(false);
                 setIsSubmitting(false);
             },
@@ -190,6 +192,15 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
             },
         });
     };
+
+    const resetForm = () => {
+        setBillingId(null);
+        setQuantity(1);
+        setMonthInstallment(null);
+        setStartMonth(null);
+        setEndMonth(null);
+    };
+
 
     function toProperCase(name: string) {
         return name
@@ -230,7 +241,7 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
     const [orNumber, setOrNumber] = useState('');
     const [paymentDate, setPaymentDate] = useState('');
     const [selectedPayments, setSelectedPayments] = useState<
-        { billing_id: number | null; amount: string; payment_method: string }[]
+        { billing_id: number | null; amount: string; payment_method: string; remarks: string }[]
     >([]);
     const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
@@ -411,7 +422,10 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showBillItemModal} onOpenChange={setShowBillItemModal}>
+            <Dialog open={showBillItemModal} onOpenChange={(open) => {
+                setShowBillItemModal(open);
+                if (!open) resetForm(); // ✅ Reset fields when modal is closed
+            }}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Add Bill Item</DialogTitle>
@@ -535,7 +549,7 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
-                            setIsSubmitting(true);
+                            setIsSubmittingPayment(true); // ✅ FIXED this line
 
                             router.post(
                                 '/billing/add-payment',
@@ -550,17 +564,18 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                                         toast.success('Payments successfully recorded.');
                                         setShowPaymentModal(false);
                                         setSelectedPayments([]);
-                                        setIsSubmitting(false);
+                                        setIsSubmittingPayment(false); // ✅
                                     },
                                     onError: () => {
                                         toast.error('Failed to record payment.');
-                                        setIsSubmitting(false);
+                                        setIsSubmittingPayment(false); // ✅
                                     },
                                 }
                             );
                         }}
                         className="space-y-4"
                     >
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="or">OR Number</Label>
@@ -661,6 +676,30 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                                         </Select>
                                     </div>
 
+                                    {/* Remarks Select */}
+                                    <div className="col-span-3 grid gap-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Remarks</Label>
+                                        <Select
+                                            value={payment.remarks}
+                                            onValueChange={(val) => {
+                                                setSelectedPayments((prev) =>
+                                                    prev.map((p, i) =>
+                                                        i === index ? { ...p, remarks: val } : p
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Remarks" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="partial_payment">Partial Payment</SelectItem>
+                                                <SelectItem value="down_payment">Down Payment</SelectItem>
+                                                <SelectItem value="full_payment">Full Payment</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     {/* Remove Button */}
                                     <div className="col-span-1 flex justify-end">
                                         <Button
@@ -690,6 +729,7 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                                                 billing_id: null,
                                                 amount: '',
                                                 payment_method: 'cash',
+                                                remarks: 'partial_payment',
                                             },
                                         ])
                                     }
@@ -732,7 +772,6 @@ export default function StudentDetails({ enrollment, availableDiscounts = [], av
                     </form>
                 </DialogContent>
             </Dialog>
-
 
         </AppLayout>
     );

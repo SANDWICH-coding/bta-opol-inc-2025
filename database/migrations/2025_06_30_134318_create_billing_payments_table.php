@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->string('or_number'); // Official Receipt number
             $table->date('payment_date');
             $table->enum('payment_method', ['cash', 'gcash', 'bank_transfer', 'check'])->default('cash');
+            $table->enum('remarks', ['partial_payment', 'full_payment', 'down_payment'])->default('full_payment'); // Remarks for the payment
             $table->decimal('amount', 10, 2); // how much was paid
             $table->timestamps();
         });

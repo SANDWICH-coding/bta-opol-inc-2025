@@ -728,7 +728,15 @@ class BillingUserController extends Controller
             }
 
             $totalAmount = $rawAmount - $discountTotal;
-            $monthlyBase = $totalAmount / $pivot->month_installment;
+
+            // ✅ Get down payment
+            $downPayment = $enrollment->payments
+                ->filter(fn($p) => $p->billing?->category?->name === $category && $p->remarks === 'down_payment')
+                ->sum(fn($p) => floatval($p->amount));
+
+            $installmentBalance = max($totalAmount - $downPayment, 0);
+            $monthlyBase = $installmentBalance / $pivot->month_installment;
+
 
             $installmentMonths = [];
             for ($i = 0; $i < $pivot->month_installment; $i++) {
@@ -736,8 +744,13 @@ class BillingUserController extends Controller
             }
 
             $itemPayments = $enrollment->payments
-                ->filter(fn($p) => $p->billing?->category?->name === $category)
+                ->filter(
+                    fn($p) =>
+                    $p->billing?->category?->name === $category &&
+                    $p->remarks !== 'down_payment'
+                )
                 ->sortBy('payment_date');
+
 
             $totalPaid = $itemPayments->sum(fn($p) => floatval($p->amount));
             $carryOver = 0;
@@ -772,6 +785,7 @@ class BillingUserController extends Controller
                 'category' => $category,
                 'months' => $installmentMap,
                 'installment_count' => $pivot->month_installment,
+                'down_payment' => $downPayment,
             ];
         }
 

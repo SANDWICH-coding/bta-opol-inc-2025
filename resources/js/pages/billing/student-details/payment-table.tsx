@@ -6,8 +6,17 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { router } from '@inertiajs/react';
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface Payment {
     id: number;
@@ -15,6 +24,7 @@ interface Payment {
     amount: number | string;
     payment_method: string;
     payment_date: string;
+    remarks: string;
     billing?: {
         category?: {
             name: string;
@@ -28,21 +38,47 @@ interface PaymentTableProps {
 }
 
 export function PaymentTable({ payments, paymentMethodColors }: PaymentTableProps) {
+    const [localPayments, setLocalPayments] = useState(payments); // ✅ Local state
+
+    const handleUpdateRemarks = (paymentId: number, newRemarks: string) => {
+        router.post(
+            `/billing/payments/${paymentId}/update-remarks`,
+            { remarks: newRemarks },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setLocalPayments((prev) =>
+                        prev.map((payment) =>
+                            payment.id === paymentId
+                                ? { ...payment, remarks: newRemarks }
+                                : payment
+                        )
+                    );
+                    toast.success("Remarks updated successfully.");
+                },
+                onError: () => {
+                    toast.error("Failed to update remarks.");
+                },
+            }
+        );
+    };
+
     return (
         <div>
-            {payments.length > 0 ? (
+            {localPayments.length > 0 ? (
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-gray-100 dark:bg-gray-800">
                             <TableHead>OR Number</TableHead>
                             <TableHead>Item</TableHead>
                             <TableHead>Method</TableHead>
+                            <TableHead>Remarks</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {payments.map((payment) => {
+                        {localPayments.map((payment) => {
                             const color =
                                 paymentMethodColors[payment.payment_method] || "#9ca3af";
 
@@ -59,6 +95,29 @@ export function PaymentTable({ payments, paymentMethodColors }: PaymentTableProp
                                         >
                                             {payment.payment_method.replace("_", " ")}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            value={payment.remarks}
+                                            onValueChange={(val) =>
+                                                handleUpdateRemarks(payment.id, val)
+                                            }
+                                        >
+                                            <SelectTrigger className="w-[150px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="partial_payment">
+                                                    Partial Payment
+                                                </SelectItem>
+                                                <SelectItem value="down_payment">
+                                                    Down Payment
+                                                </SelectItem>
+                                                <SelectItem value="full_payment">
+                                                    Full Payment
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </TableCell>
                                     <TableCell>{payment.payment_date}</TableCell>
                                     <TableCell className="text-right">

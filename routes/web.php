@@ -91,6 +91,9 @@ Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])
 
     Route::get('manage/student/{id}', [EnrollmentController::class, 'studentBillingDetails'])
         ->name('student');
+        
+    Route::post('/payments/{payment}/update-remarks', [BillingPaymentController::class, 'updateRemarks'])
+        ->name('payments.updateRemarks');
 });
 
 require __DIR__ . '/settings.php';

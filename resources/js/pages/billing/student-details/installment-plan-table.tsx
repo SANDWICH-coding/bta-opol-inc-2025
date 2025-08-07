@@ -51,15 +51,27 @@ export const InstallmentPlanTable: React.FC<InstallmentPlanTableProps> = ({
         }, 0);
 
         const totalAmount = rawAmount - discountTotal;
-        const monthlyBaseAmount = totalAmount / month_installment;
 
+        // Get down payment if exists
+        const downPayment = enrollment.payments
+            .filter((p: any) => p.billing?.category?.name === itemCategory && p.remarks === 'down_payment')
+            .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+
+        const installmentBalance = Math.max(totalAmount - downPayment, 0);
+        const monthlyBaseAmount = installmentBalance / month_installment;
+
+        // Setup months starting from start_month
         const installmentMonths = Array.from(
             { length: month_installment },
             (_, i) => ((start_month - 1 + i) % 12) + 1
         );
 
+        // Filter payments (exclude down_payment)
         const itemPayments = enrollment.payments
-            .filter((p: any) => p.billing?.category?.name === itemCategory)
+            .filter((p: any) =>
+                p.billing?.category?.name === itemCategory &&
+                p.remarks !== 'down_payment'
+            )
             .sort((a: any, b: any) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime());
 
         let totalPaid = itemPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
@@ -94,18 +106,14 @@ export const InstallmentPlanTable: React.FC<InstallmentPlanTableProps> = ({
                 totalDueThisMonth += installmentMap[currentMonth].balance;
             } else {
                 const maxMonth = Math.max(...Object.keys(installmentMap).map(Number));
-
                 if (maxMonth >= MIN_COUNTING_MONTH && currentMonth > maxMonth) {
                     const lastBalance = installmentMap[maxMonth]?.balance || 0;
-
                     if (lastBalance > 0) {
                         totalDueThisMonth += lastBalance;
                     }
                 }
             }
         }
-
-
 
         return (
             <TableRow key={item.id}>
@@ -140,6 +148,11 @@ export const InstallmentPlanTable: React.FC<InstallmentPlanTableProps> = ({
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Remaining balance</p>
+                                        {downPayment > 0 && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                ₱{downPayment.toFixed(2)} down payment applied
+                                            </p>
+                                        )}
                                     </TooltipContent>
                                 </Tooltip>
                             </div>
@@ -149,6 +162,7 @@ export const InstallmentPlanTable: React.FC<InstallmentPlanTableProps> = ({
             </TableRow>
         );
     });
+
 
     return (
         <Card>

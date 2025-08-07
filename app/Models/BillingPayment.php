@@ -13,6 +13,7 @@ class BillingPayment extends Model
         'or_number',
         'payment_date',
         'payment_method',
+        'remarks',
         'amount',
     ];
 
