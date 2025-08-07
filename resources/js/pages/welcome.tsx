@@ -45,7 +45,7 @@ export default function Welcome() {
                                 <Button
                                     onClick={() => {
                                         if (auth.user.role === 'billing') {
-                                            router.visit(route('billing.sy-list'));
+                                            router.visit(route('billing.dashboard'));
                                         } else if (auth.user.role === 'admin') {
                                             router.visit(route('admin.school-year.index'));
                                         } else {

@@ -42,4 +42,12 @@ class Enrollment extends Model
     {
         return $this->hasMany(SoaFile::class);
     }
+
+    public function billingItems()
+    {
+        return $this->belongsToMany(Billing::class, 'enrollment_billing_items')
+            ->withPivot('quantity', 'month_installment', 'start_month', 'end_month')
+            ->withTimestamps()
+            ->with('category');
+    }
 }

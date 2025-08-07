@@ -177,7 +177,12 @@ export default function SyManagePage({ schoolYear, billingCategories }: SyManage
     });
 
     const handleAddBilling = (yearLevelId: number) => {
-        setFormDataBilling({ year_level_id: yearLevelId, category: '', description: '', amount: 0 });
+        setFormDataBilling({
+            year_level_id: yearLevelId,
+            category: '',
+            description: '',
+            amount: 0,
+        });
         setShowModalBilling(true);
     };
 

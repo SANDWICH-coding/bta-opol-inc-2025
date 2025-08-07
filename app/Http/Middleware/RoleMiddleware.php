@@ -20,7 +20,10 @@ class RoleMiddleware
                 return redirect()->route('admin.school-year.index');
             }
             if ($request->user() && $request->user()->role === 'billing') {
-                return redirect()->route('billing.sy-list');
+                return redirect()->route('billing.dashboard.billingDashboard');
+            }
+            if ($request->user() && $request->user()->role === 'registrar') {
+                return redirect()->route('registrar.enrollment.school-year-list');
             }
             return redirect()->route('home');
         }

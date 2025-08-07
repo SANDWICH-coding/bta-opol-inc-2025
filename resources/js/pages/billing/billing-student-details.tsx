@@ -1,310 +1,119 @@
-import AppLayout from '@/layouts/app-layout'
-import { Head, router, usePage } from '@inertiajs/react'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table'
-import { type BreadcrumbItem } from '@/types'
-import { Button } from '@/components/ui/button'
-import { useState } from 'react'
-import { toast, Toaster } from 'sonner'
-import { AlertCircleIcon, BadgeIcon, BanknoteIcon, CalendarIcon, CheckIcon, CircleAlert, CircleMinus, Coins, CreditCard, CreditCardIcon, FileTextIcon, LayersIcon, Loader2, LucideVenetianMask, MapPinIcon, Plus, ScrollTextIcon, TicketCheck, UserIcon, UsersIcon, WalletCards, WalletIcon, X } from 'lucide-react'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction, CardFooter } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
-import React from "react";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarShortcut, MenubarTrigger } from '@/components/ui/menubar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem, PageProps } from '@/types';
+import { Head, router } from '@inertiajs/react';
+import { FilePlus, Loader2, Printer, Settings2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast, Toaster } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SearchBarWithSuggestions from '@/components/ui/searchbar';
+import { StudentCard } from './student-details/student-card-name';
+import { PaymentTable } from './student-details/payment-table';
+import { BillingBreakdownTable } from './student-details/billing-breakdown-table';
+import { InstallmentPlanTable } from './student-details/installment-plan-table';
 
-interface BillingCategory {
-    name: string
+type sameSchoolYearEnrollments = {
+    id: number;
+    lrn: string;
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+};
+
+interface Student {
+    id: number;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    gender: 'male' | 'female';
+    birthDate?: string;
+    profilePhoto?: string;
+    lrn?: string;
 }
 
 interface BillingItem {
-    id: number
-    description: string
-    amount: string
-    category: BillingCategory
+    id: number;
+    description: string;
+    amount: string;
+    category?: {
+        name: string;
+    };
+    pivot: {
+        quantity: number;
+        month_installment?: number | null; // Number of months for installment
+        start_month?: number | null; // e.g., 1 = January
+        end_month?: number | null;   // e.g., 12 = December
+    };
 }
 
-interface BillingDisc {
-    id: number
-    description: string
-    value: 'fixed' | 'percentage'
-    amount: string
-    category: BillingCategory
+interface Discount {
+    id: number;
+    description: string;
+    value: 'fixed' | 'percentage';
+    amount: string;
+    category: {
+        name: string;
+    };
 }
 
-interface SoaFile {
-    id: number
-    file_name: string
-    file_path: string
-    generated_at: string
+interface Payment {
+    id: number;
+    or_number: string;
+    payment_date: string;
+    payment_method: string;
+    amount: string;
+    billing: {
+        description: string;
+        category?: {
+            name: string;
+        };
+    };
+
 }
 
 interface EnrollmentDetails {
-    id: number
-    type: string
-    student: {
-        id: number
-        lrn: string
-        firstName: string
-        lastName: string
-        middleName?: string
-        suffix?: string
-        birthDate: string
-        gender: 'male' | 'female'
-    }
+    id: number;
+    student: Student;
     class_arm: {
-        classArmName: string
+        classArmName: string;
         year_level: {
-            id: number
-            yearLevelName: string
-            billings: BillingItem[]
+            yearLevelName: string;
             school_year: {
-                id: number
-                name: string
-            }
-        }
-    }
-    billing_discounts: BillingDisc[]
-    soa_files?: SoaFile[]
+                name: string;
+            };
+        };
+    };
+    billing_items: BillingItem[];
+    billing_discounts: Discount[];
+    payments: Payment[];
 }
 
-interface BillingPayment {
-    id: number
-    or_number: string
-    payment_date: string
-    amount: string
-    payment_method: string
-    billing: {
-        category: {
-            name: string
-        }
-        description: string
-    }
+interface Props extends PageProps {
+    enrollment: EnrollmentDetails;
+    availableDiscounts: Discount[];
+    availableBillings: BillingItem[];
+    sameSchoolYearEnrollments: sameSchoolYearEnrollments[];
 }
 
-export default function BillingStudentDetailsPage() {
-    const { enrollment, availableDiscounts, paymentHistory, billingItems, soaFiles } = usePage().props as {
-        enrollment: EnrollmentDetails
-        availableDiscounts: BillingDisc[]
-        paymentHistory: BillingPayment[]
-        billingItems: BillingItem[]
-        soaFiles: SoaFile[]
-    }
+export default function StudentDetails({ enrollment, availableDiscounts = [], availableBillings = [], sameSchoolYearEnrollments = [] }: Props) {
+    const student = enrollment.student;
+    const classArm = enrollment.class_arm;
+    const yearLevel = classArm?.year_level;
 
-
-    const fullName = `${enrollment.student.lastName}, ${enrollment.student.firstName} ${enrollment.student.middleName ?? ''} ${enrollment.student.suffix ?? ''}`
-
-    const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Billing', href: '/billing' },
-        {
-            title: enrollment.class_arm.year_level.school_year.name,
-            href: `/billing/school-year/${enrollment.class_arm.year_level.school_year.id}`,
-        },
-        {
-            title: enrollment.class_arm.year_level.yearLevelName,
-            href: `/billing/year-level/${enrollment.class_arm.year_level.id}`,
-        },
-        { title: enrollment.student.lastName, href: '#' },
-    ]
-
-    const billingByCategoryMap = enrollment.class_arm.year_level.billings.reduce((map, billing) => {
-        const cat = billing.category.name
-        if (!map[cat]) {
-            map[cat] = {
-                category: cat,
-                totalBilling: 0,
-                billingDescriptions: [],
-            }
-        }
-        map[cat].totalBilling += Number(billing.amount)
-        map[cat].billingDescriptions.push(billing.description ?? '—')
-        return map
-    }, {} as Record<string, {
-        category: string
-        totalBilling: number
-        billingDescriptions: string[]
-    }>)
-
-    const discountByCategoryMap = enrollment.billing_discounts.reduce((map, discount) => {
-        const cat = discount.category.name // ✅ FIXED LINE
-        if (!map[cat]) {
-            map[cat] = []
-        }
-        map[cat].push(discount) // ✅ no longer discount.billing_disc
-        return map
-    }, {} as Record<string, BillingDisc[]>)
-
-    const paymentsByCategory = paymentHistory.reduce((map, payment) => {
-        const cat = payment.billing.category.name
-        if (!map[cat]) {
-            map[cat] = 0
-        }
-        map[cat] += parseFloat(payment.amount)
-        return map
-    }, {} as Record<string, number>)
-
-    const groupedSummary = Object.values(billingByCategoryMap).map((entry) => {
-        const { category, totalBilling, billingDescriptions } = entry;
-        const discounts = discountByCategoryMap[category] ?? [];
-
-        let totalDiscount = 0;
-        const discountDescriptions: string[] = [];
-
-        discounts.filter(d => d.value === 'percentage').forEach(disc => {
-            const discountAmount = totalBilling * (Number(disc.amount) / 100);
-            totalDiscount += discountAmount;
-            discountDescriptions.push(`${disc.description} (${disc.amount}%)`);
-        });
-
-        discounts.filter(d => d.value === 'fixed').forEach(disc => {
-            const discountAmount = Number(disc.amount);
-            totalDiscount += discountAmount;
-            discountDescriptions.push(`${disc.description} (₱${discountAmount})`);
-        });
-
-        const totalAfterDiscount = Math.max(totalBilling - totalDiscount, 0);
-        const paidAmount = paymentsByCategory[category] ?? 0;
-        const remaining = Math.max(totalAfterDiscount - paidAmount, 0);
-
-        const monthlyBalance = remaining / 10;
-
-        return {
-            category,
-            billingAmount: totalBilling,
-            discountAmount: totalDiscount,
-            discountDescriptions,
-            totalAfterDiscount,
-            billingDescriptions,
-            paidAmount,
-            remaining,
-            monthlyBalance, // <- include this if you'll use it elsewhere
-        };
-    });
-
-
-    // Total Billing After Discount
-    const grandTotalAfterDiscount = groupedSummary.reduce((sum, i) => sum + i.totalAfterDiscount, 0)
-
-    // Total Amount Paid
-    const totalPaid = paymentHistory.reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
-
-    // Remaining Balance
-    const remainingBalance = Math.max(grandTotalAfterDiscount - totalPaid, 0)
-
-    const groupedPayments = paymentHistory.reduce<Record<string, BillingPayment[]>>((acc, payment) => {
-        if (!acc[payment.or_number]) acc[payment.or_number] = [];
-        acc[payment.or_number].push(payment);
-        return acc;
-    }, {});
-
-    const soaMonths = [
-        "June", "July", "August", "September", "October",
-        "November", "December", "January", "February", "March",
-    ];
-
-    function calculateMonthlySOA(
-        totalDue: number,
-        payments: number[],
-        startMonthIndex: number = 0,
-        monthCount: number = 10
-    ) {
-        const monthStatus = Array.from({ length: 10 }, () => ({ paid: 0, balance: 0 }));
-
-        const perMonth = totalDue / monthCount;
-
-        for (let i = startMonthIndex; i < startMonthIndex + monthCount; i++) {
-            if (i >= 10) break;
-            monthStatus[i].balance = perMonth;
-        }
-
-        let remainingPayments = [...payments];
-
-        for (let i = 0; i < 10; i++) {
-            let expected = monthStatus[i].balance;
-            let paid = 0;
-
-            while (remainingPayments.length && paid < expected) {
-                const pay = remainingPayments[0];
-                const toApply = Math.min(expected - paid, pay);
-                paid += toApply;
-                remainingPayments[0] -= toApply;
-
-                if (remainingPayments[0] <= 0) {
-                    remainingPayments.shift();
-                }
-            }
-
-            monthStatus[i].paid = paid;
-            monthStatus[i].balance = Math.max(expected - paid, 0);
-        }
-
-        return monthStatus;
-    }
-
-
-    const today = new Date();
-    const currentMonthIndex = Math.min(today.getMonth() - 5, 9); // June = index 0
-
-
-    const soaTableData = groupedSummary.map((item) => {
-        const category = item.category;
-
-        const payments = paymentHistory
-            .filter(p => p.billing.category.name === category)
-            .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime())
-            .map(p => parseFloat(p.amount));
-
-        // Start "BOOKS" in August (index 2), else default to June (index 0)
-        const isBooks = category === 'BOOKS';
-        const startMonthIndex = isBooks ? 2 : 0;
-        const months = isBooks ? 8 : 10;
-
-        const monthlyStatus = calculateMonthlySOA(item.totalAfterDiscount, payments, startMonthIndex, months);
-
-        return {
-            category,
-            monthlyStatus,
-        };
-    });
-
-    const paymentsByCategoryAndMonth = {} as Record<string, Record<string, number>>;
-
-    paymentHistory.forEach(payment => {
-        const cat = payment.billing.category.name;
-        const month = new Date(payment.payment_date).toLocaleString('default', { month: 'long' });
-
-        if (!paymentsByCategoryAndMonth[cat]) paymentsByCategoryAndMonth[cat] = {};
-        if (!paymentsByCategoryAndMonth[cat][month]) paymentsByCategoryAndMonth[cat][month] = 0;
-
-        paymentsByCategoryAndMonth[cat][month] += parseFloat(payment.amount);
-    });
-
-    const [showModal, setShowModal] = useState(false)
+    const [showDiscountModal, setShowDiscountModal] = useState(false)
     const [selectedDiscounts, setSelectedDiscounts] = useState<number[]>(
         enrollment.billing_discounts.map((disc) => disc.id)
     )
-    const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleAdd = () => {
-        setShowModal(true)
-    }
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -316,7 +125,7 @@ export default function BillingStudentDetailsPage() {
         }, {
             onSuccess: () => {
                 setIsSubmitting(false)
-                setShowModal(false)
+                setShowDiscountModal(false)
                 toast.success('Discounts updated successfully')
             },
             onError: () => {
@@ -334,538 +143,219 @@ export default function BillingStudentDetailsPage() {
         )
     }
 
-    const [showAddPayment, setShowAddPayment] = useState(false)
-    const [selectedBillingId, setSelectedBillingId] = useState<number | null>(null)
-    const [orNumber, setOrNumber] = useState('')
-    const [paymentDate, setPaymentDate] = useState('')
-    const [paymentMethod, setPaymentMethod] = useState('')
-    const [amount, setAmount] = useState('')
-    const [isAddingPayment, setIsAddingPayment] = useState(false)
+    const [showBillItemModal, setShowBillItemModal] = useState(false)
+    const [billingId, setBillingId] = useState<number | null>(null);
+    const [quantity, setQuantity] = useState(1);
+    const [monthInstallment, setMonthInstallment] = useState<number | null>(null);
+    const [startMonth, setStartMonth] = useState<number | null>(null);
+    const [endMonth, setEndMonth] = useState<number | null>(null);
 
-    const handleAddPayment = (e: React.FormEvent) => {
-        e.preventDefault()
+    const months = [
+        { value: 1, label: "January" },
+        { value: 2, label: "February" },
+        { value: 3, label: "March" },
+        { value: 4, label: "April" },
+        { value: 5, label: "May" },
+        { value: 6, label: "June" },
+        { value: 7, label: "July" },
+        { value: 8, label: "August" },
+        { value: 9, label: "September" },
+        { value: 10, label: "October" },
+        { value: 11, label: "November" },
+        { value: 12, label: "December" },
+    ];
 
-        if (!orNumber || !paymentDate) {
-            toast.error('OR Number and Date are required')
-            return
-        }
+    const handleAddBillItem = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!billingId) return;
 
-        const invalidRow = paymentRows.some(
-            row => !row.billing_id || !row.amount || !row.payment_method
-        )
+        setIsSubmitting(true);
 
-        if (invalidRow) {
-            toast.warning('Please fill in all billing item rows completely')
-            return
-        }
-
-        setIsAddingPayment(true)
-
-        router.post('/billing/add-payment', {
+        router.post('/billing/add-billing-item', {
             enrollment_id: enrollment.id,
-            or_number: orNumber,
-            payment_date: paymentDate,
-            items: paymentRows,
+            billing_id: billingId,
+            quantity,
+            month_installment: monthInstallment,
+            start_month: startMonth,
+            end_month: endMonth,
         }, {
-            preserveScroll: true,
             onSuccess: () => {
-                toast.success('Payments recorded successfully')
-                setIsAddingPayment(false)
-                setShowAddPayment(false)
-                setPaymentRows([{ billing_id: null, amount: '', payment_method: '' }])
-                setOrNumber('')
-                setPaymentDate('')
+                toast.success('Billing item added successfully');
+                setShowBillItemModal(false);
+                setIsSubmitting(false);
             },
             onError: () => {
-                toast.error('Failed to record payment')
-                setIsAddingPayment(false)
+                toast.error('Failed to add billing item');
+                setIsSubmitting(false);
             },
-        })
+        });
+    };
+
+    function toProperCase(name: string) {
+        return name
+            .toLowerCase()
+            .replace(/\b\w/g, (char) => char.toUpperCase());
     }
 
-    const [paymentRows, setPaymentRows] = useState([{ billing_id: null, amount: '', payment_method: '' }])
+    const paymentMethodColors: Record<string, string> = {
+        cash: "#6366f1",
+        gcash: "#8b5cf6",
+        bank_transfer: "#ec4899",
+        check: "#14b8a6",
+    };
 
-    const groupedBillingItems = billingItems.reduce((acc, item) => {
-        const categoryName = item.category.name
-        const summary = groupedSummary.find(g => g.category === categoryName)
-        const remaining = summary?.remaining ?? 0
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedStudent, setSelectedStudent] = useState<sameSchoolYearEnrollments | null>(null);
 
-        // Skip only if remaining is 0 and NOT SCHOOL UNIFORM
-        if (remaining <= 0 && categoryName !== "SCHOOL UNIFORM") return acc
+    const studentSuggestions = sameSchoolYearEnrollments.map(
+        (s) => `${s.firstName} ${s.lastName}`
+    );
 
-        if (!acc[categoryName]) acc[categoryName] = []
-        acc[categoryName].push(item)
+    const handleSelect = (value: string) => {
+        setSearchQuery(value);
 
-        return acc
-    }, {} as Record<string, BillingItem[]>)
+        const match = sameSchoolYearEnrollments.find(
+            (s) => `${s.firstName} ${s.lastName}`.toLowerCase() === value.toLowerCase()
+        );
+
+        if (match) {
+            setSelectedStudent(match);
+            router.get(`/billing/students/${match.id}`);
+        } else {
+            setSelectedStudent(null);
+        }
+    };
+
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [orNumber, setOrNumber] = useState('');
+    const [paymentDate, setPaymentDate] = useState('');
+    const [selectedPayments, setSelectedPayments] = useState<
+        { billing_id: number | null; amount: string; payment_method: string }[]
+    >([]);
+    const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
+    const totalAmount = selectedPayments.reduce((sum, p) => {
+        const num = parseFloat(p.amount);
+        return sum + (isNaN(num) ? 0 : num);
+    }, 0);
 
 
-    const updateRow = (index: number, field: keyof typeof paymentRows[number], value: any) => {
-        const updated = [...paymentRows]
-        updated[index][field] = value
-        setPaymentRows(updated)
-    }
-
-    const addPaymentRow = () => {
-        setPaymentRows([...paymentRows, { billing_id: null, amount: '', payment_method: '' }])
-    }
-
-    const removePaymentRow = (idx: number) => {
-        setPaymentRows((rows) => rows.filter((_, i) => i !== idx))
-    }
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Students',
+            href: '/billing/students',
+        },
+        {
+            title: `${toProperCase(student.firstName)} ${student.middleName ? `${student.middleName.charAt(0)}.` : ''} ${toProperCase(student.lastName)}`,
+            href: '#',
+        },
+    ]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={fullName} />
+            <Head
+                title={`${toProperCase(student.firstName)} ${student.middleName ? `${student.middleName.charAt(0)}.` : ''} ${toProperCase(student.lastName)}`}
+            />
             <Toaster richColors position="top-center" />
-            <div className="p-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Student Information</CardTitle>
-                        <CardDescription className="text-muted-foreground">
-                            Personal details of the enrolled student.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2">
-                            <Table>
-                                <TableBody>
-                                    {[
-                                        {
-                                            label: {
-                                                text: "LRN",
-                                                icon: <BadgeIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.student.lrn || <span className="text-muted-foreground">—</span>,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Name",
-                                                icon: <UserIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: (
-                                                <span className="capitalize">
-                                                    {enrollment.student.firstName}{" "}
-                                                    {enrollment.student.middleName
-                                                        ? enrollment.student.middleName.charAt(0) + "."
-                                                        : ""}
-                                                    {" "}
-                                                    {enrollment.student.lastName}{" "}
-                                                    {enrollment.student.suffix ?? ""}
-                                                </span>
-                                            ),
-                                        },
-                                        {
-                                            label: {
-                                                text: "Gender",
-                                                icon: <LucideVenetianMask className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: (
-                                                <span className="capitalize">
-                                                    {enrollment.student.gender}
-                                                </span>
-                                            ),
-                                        },
-                                        {
-                                            label: {
-                                                text: "Birth Date",
-                                                icon: <CalendarIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.student.birthDate
-                                                ? enrollment.student.birthDate
-                                                : <CircleAlert className="text-destructive w-4 h-4 inline" />,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Address",
-                                                icon: <MapPinIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: <span className="text-muted-foreground">Not set</span>,
-                                        },
-                                    ].map((item, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell colSpan={2} className="sm:hidden p-2 lg:p-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-muted-foreground">{item.label.text}</span>
-                                                    {typeof item.value === "string" ? (
-                                                        <span className="uppercase">{item.value}</span>
-                                                    ) : (
-                                                        item.value
-                                                    )}
-                                                </div>
-                                            </TableCell>
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
+                <div className="flex justify-start mb-4">
+                    <SearchBarWithSuggestions
+                        suggestions={studentSuggestions}
+                        onSelect={handleSelect}
+                        placeholder="Search student"
+                    />
+                </div>
 
-                                            <TableCell className="hidden sm:table-cell font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4">
-                                                <span>{item.label.text}</span>
-                                            </TableCell>
-                                            <TableCell className="hidden sm:table-cell sm:p-2 lg:p-4">
-                                                {typeof item.value === "string" ? (
-                                                    <span className="uppercase">{item.value}</span>
-                                                ) : (
-                                                    item.value
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-
-                                    ))}
-                                </TableBody>
-                            </Table>
-
-                            <Table>
-                                <TableBody>
-                                    {[
-                                        {
-                                            label: {
-                                                text: "S.Y.",
-                                                icon: <ScrollTextIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.class_arm.year_level.school_year.name,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Enrollment Type",
-                                                icon: <FileTextIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.type,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Year Level",
-                                                icon: <LayersIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.class_arm.year_level.yearLevelName,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Class",
-                                                icon: <UsersIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: enrollment.class_arm.classArmName,
-                                        },
-                                        {
-                                            label: {
-                                                text: "Status",
-                                                icon: <AlertCircleIcon className="w-4 h-4 text-muted-foreground" />,
-                                            },
-                                            value: <span className="text-muted-foreground">Not set</span>,
-                                        },
-                                    ].map((item, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell colSpan={2} className="sm:hidden p-2 lg:p-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-muted-foreground">{item.label.text}</span>
-                                                    {typeof item.value === "string" ? (
-                                                        <span className="uppercase">{item.value}</span>
-                                                    ) : (
-                                                        item.value
-                                                    )}
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="hidden sm:table-cell font-medium text-muted-foreground sm:w-1/3 sm:p-2 lg:p-4">
-                                                <span>{item.label.text}</span>
-                                            </TableCell>
-                                            <TableCell className="hidden sm:table-cell sm:p-2 lg:p-4">
-                                                {typeof item.value === "string" ? (
-                                                    <span className="uppercase">{item.value}</span>
-                                                ) : (
-                                                    item.value
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Tabs defaultValue="payments" className="mt-3">
-                    <TabsList>
-                        <TabsTrigger value="payments">Payment</TabsTrigger>
-                        <TabsTrigger value="soa">Account</TabsTrigger>
-                        <TabsTrigger value="files">Files</TabsTrigger>
+                <StudentCard
+                    student={student}
+                    yearLevel={yearLevel}
+                    toProperCase={toProperCase}
+                />
+                <Tabs defaultValue="payment">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="payment">Payments</TabsTrigger>
+                        <TabsTrigger value="billing">Billings</TabsTrigger>
                     </TabsList>
-
-                    {/* Payment History */}
-                    <TabsContent value="payments">
+                    <TabsContent value="billing">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Payment Records</CardTitle>
+                                <CardTitle>
+                                    Billing Details
+                                </CardTitle>
+                                <CardDescription>
+                                    A breakdown of this student’s billings with applied discounts.
+                                </CardDescription>
+                                <CardAction>
+                                    <Menubar>
+                                        <MenubarMenu>
+                                            <MenubarTrigger className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium">
+                                                Update
+                                            </MenubarTrigger>
+
+                                            <MenubarContent>
+                                                <MenubarItem onClick={() => setShowBillItemModal(true)}>
+                                                    Add bill item <MenubarShortcut><FilePlus /></MenubarShortcut>
+                                                </MenubarItem>
+                                                <MenubarItem onClick={() => setShowDiscountModal(true)}>
+                                                    Modify discounts <MenubarShortcut><Settings2 /></MenubarShortcut>
+                                                </MenubarItem>
+                                                <MenubarItem asChild>
+                                                    <a
+                                                        href={route('billing.pdf', enrollment.id)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        Generate Statement <MenubarShortcut><Printer /></MenubarShortcut>
+                                                    </a>
+                                                </MenubarItem>
+
+                                            </MenubarContent>
+                                        </MenubarMenu>
+                                    </Menubar>
+                                </CardAction>
+                            </CardHeader>
+                            <CardContent>
+                                <BillingBreakdownTable
+                                    billingItems={enrollment.billing_items}
+                                    discounts={enrollment.billing_discounts}
+                                    payments={enrollment.payments}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        <InstallmentPlanTable
+                            enrollment={enrollment}
+                            months={months}
+                            title="Installment Plan"
+                            description="Monthly billing installment status with discounts and payments."
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="payment">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    Payment Records
+                                </CardTitle>
                                 <CardDescription>
                                     Track payment history and transaction details.
                                 </CardDescription>
                                 <CardAction>
-                                    <Button onClick={() => setShowAddPayment(true)} variant="link">Add Payment</Button>
+                                    <Button variant="default" onClick={() => setShowPaymentModal(true)}>Add payment</Button>
                                 </CardAction>
                             </CardHeader>
                             <CardContent>
-                                {paymentHistory.length > 0 ? (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>OR #</TableHead>
-                                                <TableHead>Date</TableHead>
-                                                <TableHead>Category</TableHead>
-                                                <TableHead>Method</TableHead>
-                                                <TableHead>Amount</TableHead>
-                                                <TableHead className="text-right">Total</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {Object.entries(groupedPayments).map(([orNumber, payments]) => {
-                                                const totalAmount = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-
-                                                return (
-                                                    <React.Fragment key={orNumber}>
-                                                        {payments.map((payment, idx) => (
-                                                            <TableRow key={payment.id}>
-                                                                <TableCell>{idx === 0 ? payment.or_number : ''}</TableCell>
-                                                                <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
-                                                                <TableCell>{payment.billing.category.name}</TableCell>
-                                                                <TableCell>{payment.payment_method}</TableCell>
-                                                                <TableCell>
-                                                                    ₱{parseFloat(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                                </TableCell>
-                                                                <TableCell></TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                        {/* Total Row */}
-                                                        <TableRow>
-                                                            <TableCell colSpan={5} className="text-right text-muted-foreground">
-                                                            </TableCell>
-                                                            <TableCell className="text-right text-muted-foreground">
-                                                                <span className="font-bold text-green-700 ">₱{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                        </TableBody>
-                                    </Table>
-                                ) : (
-                                    <p className="text-muted-foreground">No payments recorded yet.</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* SOA */}
-                    <TabsContent value="soa">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Statement of Account</CardTitle>
-                                <CardDescription>
-                                    Summary of billing and payments.
-                                </CardDescription>
-                                <CardAction>
-                                    {/* <Button asChild>
-                                        <a href={`/billing/generate-soa/student/${enrollment.student.id}`} target="_blank" rel="noopener noreferrer">
-                                            Generate SOA
-                                        </a>
-                                    </Button> */}
-                                    <Button onClick={handleAdd} variant="outline">Modify Discount</Button>
-                                </CardAction>
-                            </CardHeader>
-
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {/* Bill summary */}
-                                    <Card>
-                                        <CardContent>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Category</TableHead>
-                                                        <TableHead>Billing</TableHead>
-                                                        <TableHead>Discounts</TableHead>
-                                                        <TableHead>Total Payable</TableHead>
-                                                        <TableHead>Paid</TableHead>
-                                                        <TableHead>Remaining</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-
-                                                <TableBody>
-                                                    {groupedSummary.map((item, idx) => (
-                                                        <TableRow key={idx}>
-                                                            <TableCell>{item.category}</TableCell>
-                                                            <TableCell className="text-muted-foreground">₱{item.billingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                                            <TableCell>
-                                                                {item.discountDescriptions.length > 0
-                                                                    ? item.discountDescriptions.map((desc, i) => <div key={i}>{desc}</div>)
-                                                                    : <span className="text-muted-foreground">—</span>}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                ₱{item.totalAfterDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </TableCell>
-                                                            <TableCell className="text-muted-foreground">
-                                                                ₱{item.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </TableCell>
-                                                            <TableCell className="text-red-400">
-                                                                ₱{item.remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-
-                                                    {/* Totals Row */}
-                                                    <TableRow>
-                                                        <TableCell colSpan={3} className="text-right font-semibold"></TableCell>
-                                                        <TableCell className="font-bold text-green-700">
-                                                            ₱{groupedSummary.reduce((sum, i) => sum + i.totalAfterDiscount, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </TableCell>
-                                                        <TableCell className="font-bold text-blue-600">
-                                                            ₱{totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </TableCell>
-                                                        <TableCell className="font-bold text-red-600">
-                                                            ₱{remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Payment summary */}
-                                    <Card>
-                                        <CardContent>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead></TableHead>
-                                                        {soaMonths.map((month, i) => (
-                                                            <TableHead key={i} className="text-center">{month}</TableHead>
-                                                        ))}
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {soaTableData
-                                                        .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS' && category !== 'SCHOOL UNIFORM')
-                                                        .map(({ category, monthlyStatus }, idx) => (
-                                                            <TableRow key={idx}>
-                                                                <TableCell className="font-medium">{category}</TableCell>
-                                                                {monthlyStatus.map((month, i) => (
-                                                                    <TableCell key={i} className="text-right">
-                                                                        {i <= currentMonthIndex ? (
-                                                                            <>
-                                                                                <div className="text-green-700 font-semibold">
-                                                                                    ₱{month.paid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                                                </div>
-                                                                                <div className="text-red-500 text-xs">
-                                                                                    Bal: ₱{month.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                                                </div>
-                                                                            </>
-                                                                        ) : (
-                                                                            <div className="text-gray-400 text-xs italic text-center">—</div>
-                                                                        )}
-                                                                    </TableCell>
-                                                                ))}
-                                                            </TableRow>
-                                                        ))}
-
-                                                    {/* Total row per month */}
-                                                    <TableRow className="border-t-2">
-                                                        <TableCell className="font-bold">Total Balance</TableCell>
-                                                        {Array.from({ length: 10 }).map((_, i) => {
-                                                            if (i > currentMonthIndex) {
-                                                                return (
-                                                                    <TableCell key={i} className="text-center text-gray-400 italic">
-                                                                        —
-                                                                    </TableCell>
-                                                                );
-                                                            }
-
-                                                            const totalBalance = soaTableData
-                                                                .filter(row => row.category !== 'REGISTRATION' && row.category !== 'BOOKS' && row.category !== 'SCHOOL UNIFORM')
-                                                                .reduce((sum, row) => sum + row.monthlyStatus[i].balance, 0);
-
-                                                            return (
-                                                                <TableCell key={i} className="text-right text-red-600 font-bold">
-                                                                    ₱{totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                                                                </TableCell>
-                                                            );
-                                                        })}
-                                                    </TableRow>
-
-                                                    {/* Due Today Total Balance */}
-                                                    <TableRow className="border-t">
-                                                        <TableCell className="font-bold"></TableCell>
-                                                        {Array.from({ length: 10 }).map((_, i) => {
-                                                            if (i === 0) {
-                                                                const dueTodayTotal = soaTableData
-                                                                    .filter(({ category }) => category !== 'REGISTRATION' && category !== 'BOOKS' && category !== 'SCHOOL UNIFORM')
-                                                                    .reduce((sum, row) => {
-                                                                        return sum + row.monthlyStatus
-                                                                            .slice(0, currentMonthIndex + 1)
-                                                                            .reduce((mSum, m) => mSum + m.balance, 0);
-                                                                    }, 0);
-
-                                                                return (
-                                                                    <TableCell
-                                                                        key={i}
-                                                                        colSpan={10}
-                                                                        className="text-right text-red-700 font-bold pr-4"
-                                                                    >
-                                                                        ₱{dueTodayTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} due as of {soaMonths[currentMonthIndex]}
-                                                                    </TableCell>
-                                                                );
-                                                            }
-                                                            return null;
-                                                        })}
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </CardContent>
-
-                        </Card>
-                    </TabsContent>
-
-                    <TabsContent value="files">
-                        {/* SOA Files */}
-                        <Card>
-                            <CardContent>
-                                <div>
-                                    {soaFiles.length > 0 ? (
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>File Name</TableHead>
-                                                    <TableHead>Date Generated</TableHead>
-                                                    <TableHead className="text-right">Action</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {soaFiles.map((file) => (
-                                                    <TableRow key={file.id}>
-                                                        <TableCell>{file.file_name}</TableCell>
-                                                        <TableCell>{new Date(file.generated_at).toLocaleString()}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            <a
-                                                                href={`/storage/${file.file_path}`}
-                                                                target="_blank"
-                                                                className="text-blue-600 hover:underline text-sm"
-                                                            >
-                                                                View PDF
-                                                            </a>
-                                                        </TableCell>
-
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">No SOA files generated yet.</p>
-                                    )}
-                                </div>
+                                <PaymentTable
+                                    payments={enrollment.payments}
+                                    paymentMethodColors={paymentMethodColors}
+                                />
                             </CardContent>
                         </Card>
                     </TabsContent>
                 </Tabs>
             </div>
 
-            <Dialog open={showModal} onOpenChange={setShowModal}>
+            <Dialog open={showDiscountModal} onOpenChange={setShowDiscountModal}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Modify Discounts</DialogTitle>
@@ -903,7 +393,7 @@ export default function BillingStudentDetailsPage() {
                         </div>
 
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                            <Button type="button" variant="outline" onClick={() => setShowDiscountModal(false)}>
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isSubmitting}>
@@ -921,27 +411,172 @@ export default function BillingStudentDetailsPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={showAddPayment} onOpenChange={setShowAddPayment}>
-                <DialogContent className={`sm:max-w-xl ${paymentRows.length >= 3 ? 'max-h-[80vh] overflow-y-auto' : ''}`}>
+            <Dialog open={showBillItemModal} onOpenChange={setShowBillItemModal}>
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Add Payment</DialogTitle>
-                        <DialogDescription>Record a payment with multiple billing items under one receipt.</DialogDescription>
+                        <DialogTitle>Add Bill Item</DialogTitle>
+                        <DialogDescription>
+                            Select a billing item and quantity.
+                        </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleAddPayment} className="space-y-4">
-                        {/* OR and Date */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
+                    <form onSubmit={handleAddBillItem} className="space-y-4">
+                        <div className="grid gap-3">
+                            <Label htmlFor="bill-item">Item</Label>
+                            <Select
+                                value={billingId ? String(billingId) : ""}
+                                onValueChange={(value) => setBillingId(Number(value))}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select an item" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableBillings.map((bill) => (
+                                        <SelectItem key={bill.id} value={String(bill.id)}>
+                                            {bill.category?.name} - ₱{parseFloat(bill.amount).toFixed(2)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Label htmlFor="quantity">Quantity</Label>
+                            <Input
+                                id="quantity"
+                                type="number"
+                                min="1"
+                                value={quantity}
+                                onChange={(e) => setQuantity(Number(e.target.value))}
+                                required
+                            />
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Label htmlFor="month_installment">Installment Months (Optional)</Label>
+                            <Input
+                                id="month_installment"
+                                type="number"
+                                min="1"
+                                value={monthInstallment ?? ""}
+                                onChange={(e) =>
+                                    setMonthInstallment(e.target.value ? Number(e.target.value) : null)
+                                }
+                            />
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Label>Start Month (Optional)</Label>
+                            <Select
+                                value={startMonth ? String(startMonth) : ""}
+                                onValueChange={(value) => setStartMonth(Number(value))}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select start month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map((m) => (
+                                        <SelectItem key={m.value} value={String(m.value)}>
+                                            {m.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <Label>End Month (Optional)</Label>
+                            <Select
+                                value={endMonth ? String(endMonth) : ""}
+                                onValueChange={(value) => setEndMonth(Number(value))}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select end month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map((m) => (
+                                        <SelectItem key={m.value} value={String(m.value)}>
+                                            {m.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setShowBillItemModal(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Changes'
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Payment</DialogTitle>
+                        <DialogDescription>
+                            Select billing items and assign payments to each under a single OR.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setIsSubmitting(true);
+
+                            router.post(
+                                '/billing/add-payment',
+                                {
+                                    enrollment_id: enrollment.id,
+                                    or_number: orNumber,
+                                    payment_date: paymentDate,
+                                    items: selectedPayments.filter((p) => p.billing_id !== null),
+                                },
+                                {
+                                    onSuccess: () => {
+                                        toast.success('Payments successfully recorded.');
+                                        setShowPaymentModal(false);
+                                        setSelectedPayments([]);
+                                        setIsSubmitting(false);
+                                    },
+                                    onError: () => {
+                                        toast.error('Failed to record payment.');
+                                        setIsSubmitting(false);
+                                    },
+                                }
+                            );
+                        }}
+                        className="space-y-4"
+                    >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="or">OR Number</Label>
                                 <Input
+                                    id="or"
                                     type="text"
-                                    placeholder="OR Number"
                                     value={orNumber}
                                     onChange={(e) => setOrNumber(e.target.value)}
                                     required
                                 />
                             </div>
-                            <div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="paymentDate">Payment Date</Label>
                                 <Input
+                                    id="paymentDate"
                                     type="date"
                                     value={paymentDate}
                                     onChange={(e) => setPaymentDate(e.target.value)}
@@ -950,133 +585,155 @@ export default function BillingStudentDetailsPage() {
                             </div>
                         </div>
 
-                        {/* Dynamic Payment Rows */}
-                        {paymentRows.map((row, idx) => (
-                            <div
-                                key={idx}
-                                className="relative grid gap-4 items-end border p-6 rounded-md sm:grid-cols-2 lg:grid-cols-3"
-                            >
-                                {paymentRows.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => removePaymentRow(idx)}
-                                        className="absolute top-2 right-2 text-destructive hover:underline"
-                                    >
-                                        <CircleMinus />
-                                    </button>
-                                )}
 
-                                {/* Bill Item */}
-                                <div>
-                                    <Label className="mb-2">Bill item</Label>
-                                    <Select
-                                        value={row.billing_id ? String(row.billing_id) : ""}
-                                        onValueChange={(val) => updateRow(idx, "billing_id", Number(val))}
-                                        required
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select item" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Object.entries(groupedBillingItems).map(([category, items]) => (
-                                                <SelectGroup key={category}>
-                                                    {items.map((item) => (
-                                                        <SelectItem key={item.id} value={String(item.id)}>
-                                                            {category}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                        <div className="border rounded-md p-4 space-y-4 bg-muted/50">
+                            {selectedPayments.map((payment, index) => (
+                                <div
+                                    key={index}
+                                    className="grid grid-cols-12 gap-4 items-end bg-background p-4 rounded-xl shadow-sm border hover:shadow-md transition-all"
+                                >
+                                    {/* Billing Item Select */}
+                                    <div className="col-span-5 grid gap-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Item</Label>
+                                        <Select
+                                            value={payment.billing_id?.toString() ?? ''}
+                                            onValueChange={(val) => {
+                                                const billingId = parseInt(val);
+                                                setSelectedPayments((prev) =>
+                                                    prev.map((p, i) =>
+                                                        i === index ? { ...p, billing_id: billingId } : p
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Select item" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {enrollment.billing_items.map((item) => (
+                                                    <SelectItem key={item.id} value={item.id.toString()}>
+                                                        {item.category?.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Amount Input */}
+                                    <div className="col-span-3 grid gap-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Amount</Label>
+                                        <Input
+                                            type="number"
+                                            value={payment.amount}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedPayments((prev) =>
+                                                    prev.map((p, i) =>
+                                                        i === index ? { ...p, amount: val } : p
+                                                    )
+                                                );
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Method Select */}
+                                    <div className="col-span-3 grid gap-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Method</Label>
+                                        <Select
+                                            value={payment.payment_method}
+                                            onValueChange={(val) => {
+                                                setSelectedPayments((prev) =>
+                                                    prev.map((p, i) =>
+                                                        i === index ? { ...p, payment_method: val } : p
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Method" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="cash">Cash</SelectItem>
+                                                <SelectItem value="gcash">GCash</SelectItem>
+                                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                                <SelectItem value="check">Check</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Remove Button */}
+                                    <div className="col-span-1 flex justify-end">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() =>
+                                                setSelectedPayments((prev) =>
+                                                    prev.filter((_, i) => i !== index)
+                                                )
+                                            }
+                                        >
+                                            -
+                                        </Button>
+                                    </div>
                                 </div>
+                            ))}
 
-                                {/* Amount */}
-                                <div>
-                                    <Label className="mb-2">Amount</Label>
-                                    <Input
-                                        type="text"
-                                        value={row.amount}
-                                        onChange={(e) => updateRow(idx, "amount", e.target.value)}
-                                        required
-                                    />
+                            {/* Add New Bill Item Button */}
+                            {/* Add New Bill Item Button + Total Amount */}
+                            <div className="pt-2 flex items-center justify-between">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() =>
+                                        setSelectedPayments((prev) => [
+                                            ...prev,
+                                            {
+                                                billing_id: null,
+                                                amount: '',
+                                                payment_method: 'cash',
+                                            },
+                                        ])
+                                    }
+                                >
+                                    + Add Bill Item
+                                </Button>
+
+                                <div className="text-right font-medium text-muted-foreground">
+                                    Total Amount: <span className="text-foreground font-semibold">₱{totalAmount.toFixed(2)}</span>
                                 </div>
-
-                                {/* Method */}
-                                <div>
-                                    <Label className="mb-2">Method</Label>
-                                    <Select
-                                        value={row.payment_method}
-                                        onValueChange={(val) => updateRow(idx, "payment_method", val)}
-                                        required
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select method" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                <SelectLabel>Payment methods</SelectLabel>
-                                                <SelectItem value="cash">
-                                                    <div className="flex items-center gap-2">
-                                                        <Coins className="w-4 h-4 text-muted-foreground" />
-                                                        <span>Cash</span>
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="gcash">
-                                                    <div className="flex items-center gap-2">
-                                                        <CreditCardIcon className="w-4 h-4 text-muted-foreground" />
-                                                        <span>GCash</span>
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="bank_transfer">
-                                                    <div className="flex items-center gap-2">
-                                                        <WalletCards className="w-4 h-4 text-muted-foreground" />
-                                                        <span>Bank Transfer</span>
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="check">
-                                                    <div className="flex items-center gap-2">
-                                                        <TicketCheck className="w-4 h-4 text-muted-foreground" />
-                                                        <span>Check / Cheque</span>
-                                                    </div>
-                                                </SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Add More + Total Amount */}
-                        <div className="flex items-center justify-between gap-4">
-                            <Button type="button" variant="outline" onClick={addPaymentRow}>
-                                <Plus className="w-4 h-4 mr-1" /> Bill item
-                            </Button>
-
-                            <div className="text-md font-bold text-green-700 text-right">
-                                <span className="text-sm">TOTAL:</span> ₱{" "}
-                                {paymentRows
-                                    .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0)
-                                    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                         </div>
 
-                        {/* Sticky Footer */}
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setShowAddPayment(false)}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setShowPaymentModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isAddingPayment}>
-                                {isAddingPayment ? (
+                            <Button
+                                type="submit"
+                                disabled={
+                                    isSubmittingPayment ||
+                                    selectedPayments.length === 0 ||
+                                    selectedPayments.some((p) => !p.billing_id || !p.amount)
+                                }
+                            >
+                                {isSubmittingPayment ? (
                                     <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Processing...
                                     </>
-                                ) : 'Record Payment'}
+                                ) : (
+                                    'Submit Payment'
+                                )}
                             </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
+
+
         </AppLayout>
-    )
+    );
 }

@@ -1,149 +1,182 @@
-import AppLayout from '@/layouts/app-layout'
-import { Head, router } from '@inertiajs/react'
-import { Button } from '@/components/ui/button'
-import { type BreadcrumbItem } from '@/types'
-import { DataTable } from '@/components/ui/data-table'
-import { type ColumnDef } from "@tanstack/react-table"
-import { Checkbox } from '@/components/ui/checkbox'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
+import {
+    Card, CardAction, CardContent, CardDescription,
+    CardHeader, CardTitle
+} from '@/components/ui/card';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { ArrowRight } from 'lucide-react';
+import { type BreadcrumbItem } from '@/types';
+import SearchBarWithSuggestions from '@/components/ui/searchbar';
+import { useState } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-interface Student {
-    id: number
-    firstName: string
-    lastName: string
-    middleName?: string
-    suffix?: string
-    gender: 'male' | 'female'
-    profilePhoto: string
-    enrollments: {
-        id: number
-        class_arm: {
-            classArmName: string
-            year_level: {
-                yearLevelName: string
-            }
+type Student = {
+    id: number;
+    lrn: string;
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    yearLevel: string;
+    section: string;
+    totalPaid: number;
+};
+
+type SchoolYear = {
+    id: number;
+    name: string;
+};
+
+type PageProps = {
+    students: Student[];
+    schoolYears: SchoolYear[];
+    selectedSchoolYear: string;
+    selectedYearLevel?: string;
+    yearLevels: string[];
+};
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Students', href: '/billing/students' },
+];
+
+export default function StudentList() {
+    const {
+        students,
+        schoolYears,
+        selectedSchoolYear,
+    } = usePage<PageProps>().props;
+
+    // Group students by year level
+    const studentsByYearLevel: Record<string, Student[]> = students.reduce((acc, student) => {
+        if (!acc[student.yearLevel]) acc[student.yearLevel] = [];
+        acc[student.yearLevel].push(student);
+        return acc;
+    }, {} as Record<string, Student[]>);
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+    const studentSuggestions = students.map(
+        (s) => `${s.firstName} ${s.lastName}`
+    );
+
+    const handleSelect = (value: string) => {
+        setSearchQuery(value);
+
+        const match = students.find(
+            (s) => `${s.firstName} ${s.lastName}`.toLowerCase() === value.toLowerCase()
+        );
+
+        if (match) {
+            setSelectedStudent(match);
+            router.get(`/billing/students/${match.id}`);
+        } else {
+            setSelectedStudent(null);
         }
-    }[]
-}
+    };
 
-interface StudentListPageProps {
-    students: Student[]
-    schoolYear: {
-        id: number
-        name: string
+    const handleFilterChange = (filters: { school_year?: string; year_level?: string }) => {
+        router.get(route('billing.students'), filters, { preserveScroll: true });
+    };
+
+    function toProperCase(name: string) {
+        return name
+            .toLowerCase()
+            .replace(/\b\w/g, (char) => char.toUpperCase());
     }
-}
-
-const columns: ColumnDef<Student>[] = [
-    {
-        id: "select",
-        header: ({ table }) => (
-            <Checkbox
-                checked={table.getIsAllPageRowsSelected()}
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label="Select all"
-            />
-        ),
-        cell: ({ row }) => (
-            <Checkbox
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label="Select row"
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-
-    {
-        id: "Student",
-        header: "Student",
-        cell: ({ row }) => {
-            const s = row.original;
-            const [imgError, setImgError] = useState(false);
-
-            const imageSrc = imgError || !s.profilePhoto
-                ? "/images/avatar-place-holder.png"
-                : `/storage/${s.profilePhoto}`;
-
-            return (
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage
-                            src={imageSrc}
-                            onError={() => setImgError(true)}
-                            alt={`${s.firstName} ${s.lastName}`}
-                        />
-                        <AvatarFallback>
-                            {s.firstName?.[0]}
-                            {s.lastName?.[0]}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="text-sm font-medium">
-                        {s.lastName}, {s.firstName} {s.middleName ?? ""} {s.suffix ?? ""}
-                    </div>
-                </div>
-            )
-        },
-        accessorFn: (row) =>
-            `${row.lastName} ${row.firstName} ${row.middleName ?? ""} ${row.suffix ?? ""}`,
-        filterFn: (row, id, value) => {
-            return row
-                .getValue<string>(id)
-                ?.toLowerCase()
-                .includes(value.toLowerCase())
-        },
-    },
-    {
-        id: "Total Payments",
-        header: "Total Payments",
-        cell: () => <span className="text-muted-foreground">—</span>,
-    },
-    {
-        id: "Status",
-        header: "Status",
-        cell: () => <span className="text-muted-foreground">—</span>,
-    },
-    {
-        id: "Latest Payment",
-        header: "Latest Payment",
-        cell: () => <span className="text-muted-foreground">—</span>,
-    },
-
-    {
-        id: "Details",
-        header: "Details",
-        cell: ({ row }) => (
-            <Button
-                variant="link"
-                className="text-sm text-blue-600 hover:underline"
-                onClick={() =>
-                    router.get(`/billing/student/${row.original.enrollments[0]?.id}`)
-                }
-            >
-                <ChevronRight className="text-pink-400" strokeWidth={3} />
-            </Button>
-        ),
-    },
-]
-
-export default function BillingStudentListPage({ students, schoolYear }: StudentListPageProps) {
-    const yearLevelName = students[0]?.enrollments[0]?.class_arm?.year_level?.yearLevelName ?? '—'
-
-    const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Billing', href: '/billing/' },
-        { title: schoolYear.name, href: `/billing/school-year/${schoolYear.id}` },
-        { title: yearLevelName, href: '#' },
-    ]
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Enrolled Students" />
-            <div className="p-6">
-                <DataTable columns={columns} data={students} filterKey="Student" />
+            <Head title="Students" />
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{selectedSchoolYear}</CardTitle>
+                        <CardDescription>List of enrollment in this school year.</CardDescription>
+                        <CardAction className="flex flex-wrap gap-2">
+                            <Select
+                                onValueChange={(val) => handleFilterChange({ school_year: val })}
+                                defaultValue={selectedSchoolYear}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="School Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {schoolYears.map((sy) => (
+                                        <SelectItem key={sy.id} value={sy.name}>
+                                            {sy.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </CardAction>
+                    </CardHeader>
+
+                    <CardContent>
+                        <div className="flex justify-start mb-4">
+                            <SearchBarWithSuggestions
+                                suggestions={studentSuggestions}
+                                onSelect={handleSelect}
+                                placeholder="Search student"
+                            />
+                        </div>
+
+                        <Accordion type="multiple" className="w-full">
+                            {Object.entries(studentsByYearLevel).map(([yearLevel, group]) => (
+                                <AccordionItem key={yearLevel} value={yearLevel}>
+                                    <AccordionTrigger className="text-base font-semibold">
+                                        {yearLevel} ({group.length} students)
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-gray-100 dark:bg-gray-800">
+                                                    <TableHead>LRN</TableHead>
+                                                    <TableHead>First name</TableHead>
+                                                    <TableHead>Middle name</TableHead>
+                                                    <TableHead>Last name</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {group.map((student) => (
+                                                    <TableRow key={student.id}>
+                                                        <TableCell>{student.lrn}</TableCell>
+                                                        <TableCell>{toProperCase(student.firstName)}</TableCell>
+                                                        <TableCell>{toProperCase(student.middleName || '-')}</TableCell>
+                                                        <TableCell>{toProperCase(student.lastName)}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button
+                                                                variant="link"
+                                                                onClick={() => router.get(`/billing/students/${student.id}`)}
+                                                            >
+                                                                Details <ArrowRight className="ml-1" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+
+                        {students.length === 0 && (
+                            <p className="text-center text-muted-foreground mt-6">
+                                No students found for the selected school year.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
-    )
+    );
 }

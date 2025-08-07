@@ -31,20 +31,15 @@ class BillingController extends Controller
     {
         $validated = $request->validate([
             'year_level_id' => 'required|exists:year_levels,id',
-            'category' => 'required|string|max:50', // from formDataBilling
+            'category' => 'required|string|max:50',
             'description' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
-        ], [
-            'category.required' => 'Category is required.',
-            'amount.required' => 'Amount is required.',
         ]);
 
-        // Find or create the billing category
         $billingCat = BillingCat::firstOrCreate([
             'name' => $validated['category']
         ]);
 
-        // Create billing record using billing_cat_id
         Billing::create([
             'year_level_id' => $validated['year_level_id'],
             'billing_cat_id' => $billingCat->id,
@@ -52,7 +47,7 @@ class BillingController extends Controller
             'amount' => $validated['amount'],
         ]);
 
-         return back(303);
+        return back(303);
     }
 
     /**

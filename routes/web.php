@@ -6,6 +6,7 @@ use App\Http\Controllers\BillingPaymentController;
 use App\Http\Controllers\BillingUserController;
 use App\Http\Controllers\ClassArmController;
 use App\Http\Controllers\EnrollBillingDiscController;
+use App\Http\Controllers\EnrollmentBillingItemController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\YearLevelController;
 use App\Http\Controllers\SchoolYearController;
@@ -16,12 +17,6 @@ use App\Http\Middleware\RoleMiddleware;
 Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
-});
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('school-year', SchoolYearController::class);
@@ -62,32 +57,40 @@ Route::prefix('registrar')->name('registrar.')->middleware(['auth', 'role:regist
 });
 
 Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])->group(function () {
-    Route::get('', [BillingUserController::class, 'listSchoolYear'])->name('sy-list');
-    Route::get('school-year/{id}', [BillingUserController::class, 'listYearLevel'])
-        ->name('billing.yl-list');
-    Route::get('year-level/{id}', [BillingUserController::class, 'listStudent'])
-        ->name('billing.student-list');
 
-    Route::get('student/{id}', [BillingUserController::class, 'studentDetails'])
-        ->name('billing.student-details');
+
+    Route::get('dashboard', [BillingUserController::class, 'billingDashboard'])
+        ->name('dashboard');
+
+    Route::get('students', [BillingUserController::class, 'students'])
+        ->name('students');
+
+    Route::get('', [BillingUserController::class, 'listSchoolYear'])
+        ->name('sy-list');
+
+    Route::get('school-year/{id}', [BillingUserController::class, 'listYearLevel'])
+        ->name('yl-list');
+
+    Route::get('year-level/{id}', [BillingUserController::class, 'listStudent'])
+        ->name('student-list');
+
+    Route::get('students/{id}', [BillingUserController::class, 'studentDetail'])
+        ->name('student-details');
 
     Route::post('apply-discount', [EnrollBillingDiscController::class, 'applyDiscount'])
-        ->name('billing.apply-discount');
+        ->name('apply-discount');
+
+    Route::post('add-billing-item', [EnrollmentBillingItemController::class, 'store'])
+        ->name('add-billing-item');
 
     Route::post('add-payment', [BillingPaymentController::class, 'createPayment'])
-        ->name('billing.add-payment');
+        ->name('add-payment');
 
-    Route::get('generate-soa/student/{id}', [BillingUserController::class, 'generateSoa'])
-        ->name('biling.generate-soa');
-
-    Route::post('generate-soa/all-student/{id}', [BillingUserController::class, 'generateAllSoa'])
-        ->name('generate-all-soa');
+    Route::get('{id}/pdf', [BillingUserController::class, 'generateStudentBillingPDF'])
+        ->name('pdf');
 
     Route::get('manage/student/{id}', [EnrollmentController::class, 'studentBillingDetails'])
-        ->name('biling.student');
-
-    Route::get('soa/download-zip/{schoolYearId}', [BillingUserController::class, 'downloadSoaZip'])->name('soa.download-zip');
-
+        ->name('student');
 });
 
 require __DIR__ . '/settings.php';

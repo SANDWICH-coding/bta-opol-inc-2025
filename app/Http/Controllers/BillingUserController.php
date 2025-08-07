@@ -11,14 +11,122 @@ use App\Models\SoaFile;
 use App\Models\Student;
 use App\Models\YearLevel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use DB;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 use Storage;
 use Str;
 use ZipArchive;
 
+
 class BillingUserController extends Controller
 {
+    public function billingDashboard(Request $request)
+    {
+        $schoolYears = SchoolYear::orderByDesc('name')->get();
+        $selectedSY = $request->input('school_year', $schoolYears->first()?->name);
+
+        $paymentStats = BillingPayment::query()
+            ->whereHas('enrollment.classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
+                $q->where('name', $selectedSY);
+            })
+            ->select('payment_method', DB::raw('SUM(amount) as total'))
+            ->groupBy('payment_method')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'payment_method' => $item->payment_method,
+                    'total' => (float) $item->total,
+                ];
+            });
+
+        $uniqueORCount = BillingPayment::whereHas('enrollment.classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
+            $q->where('name', $selectedSY);
+        })->distinct('or_number')->count('or_number');
+
+        $categoryTotals = DB::table('billing_payments')
+            ->join('billings', 'billing_payments.billing_id', '=', 'billings.id')
+            ->join('billing_cats', 'billings.billing_cat_id', '=', 'billing_cats.id')
+            ->join('enrollments', 'billing_payments.enrollment_id', '=', 'enrollments.id')
+            ->join('class_arms', 'enrollments.class_arm_id', '=', 'class_arms.id')
+            ->join('year_levels', 'class_arms.year_level_id', '=', 'year_levels.id')
+            ->join('school_years', 'year_levels.school_year_id', '=', 'school_years.id')
+            ->where('school_years.name', $selectedSY)
+            ->select('billing_cats.name as category', DB::raw('SUM(billing_payments.amount) as total'))
+            ->groupBy('billing_cats.name')
+            ->get();
+
+        $today = Carbon::today();
+
+        // 1. Summary by Payment Method
+        $summaryByPaymentMethod = DB::table('billing_payments')
+            ->whereDate('payment_date', $today)
+            ->select('payment_method', DB::raw('SUM(amount) as total'))
+            ->groupBy('payment_method')
+            ->get();
+
+        // 2. Summary by Billing Category
+        $summaryByCategory = DB::table('billing_payments')
+            ->join('billings', 'billing_payments.billing_id', '=', 'billings.id')
+            ->join('billing_cats', 'billings.billing_cat_id', '=', 'billing_cats.id')
+            ->whereDate('billing_payments.payment_date', $today)
+            ->select('billing_cats.name as category', DB::raw('SUM(billing_payments.amount) as total'))
+            ->groupBy('billing_cats.name')
+            ->get();
+
+        $uniqueORCountToday = BillingPayment::whereDate('payment_date', $today)
+            ->distinct('or_number')
+            ->count('or_number');
+
+        return Inertia::render('billing/billing-dashboard', [
+            'paymentStats' => $paymentStats,
+            'categoryTotals' => $categoryTotals,
+            'uniqueORCount' => $uniqueORCount,
+            'uniqueORCountToday' => $uniqueORCountToday,
+            'schoolYears' => $schoolYears,
+            'selectedSchoolYear' => $selectedSY,
+            'summaryByPaymentMethod' => $summaryByPaymentMethod,
+            'summaryByCategory' => $summaryByCategory,
+        ]);
+    }
+
+    public function students(Request $request)
+    {
+        $schoolYears = SchoolYear::orderByDesc('name')->get();
+        $selectedSY = $request->input('school_year', $schoolYears->first()?->name);
+
+        $query = Enrollment::with([
+            'student',
+            'classArm.yearLevel.schoolYear',
+            'payments'
+        ])
+            ->whereHas('classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
+                $q->where('name', $selectedSY);
+            });
+
+        $students = $query->get()->map(function ($enrollment) {
+            $totalPaid = $enrollment->payments ? $enrollment->payments->sum('amount') : 0;
+
+            return [
+                'id' => $enrollment->id,
+                'lrn' => $enrollment->student->lrn,
+                'firstName' => $enrollment->student->firstName,
+                'middleName' => $enrollment->student->middleName,
+                'lastName' => $enrollment->student->lastName,
+                'yearLevel' => $enrollment->classArm->yearLevel->yearLevelName,
+                'section' => $enrollment->classArm->classArmName,
+                'totalPaid' => $totalPaid,
+            ];
+        });
+
+        return Inertia::render('billing/billing-student-list', [
+            'students' => $students,
+            'schoolYears' => $schoolYears,
+            'selectedSchoolYear' => $selectedSY,
+        ]);
+    }
+
     public function listSchoolYear()
     {
         $schoolYears = SchoolYear::withCount('yearLevels')->get();
@@ -533,4 +641,149 @@ class BillingUserController extends Controller
         return response()->download($tempZipPath)->deleteFileAfterSend(true);
     }
 
+    public function studentDetail(string $id)
+    {
+        $enrollment = Enrollment::with([
+            'student',
+            'classArm.yearLevel.schoolYear',
+            'billingItems' => fn($q) => $q->with('category'),
+            'billingDiscounts.category',
+            'payments.billing.category',
+        ])->findOrFail($id);
+
+        $schoolYearId = optional($enrollment->classArm?->yearLevel?->schoolYear)?->id;
+
+        $availableDiscounts = BillingDisc::with('category')
+            ->where('school_year_id', $schoolYearId)
+            ->get();
+
+        $yearLevelId = $enrollment->classArm->yearLevel->id;
+
+        $availableBillings = Billing::with('category')
+            ->where('year_level_id', $yearLevelId)
+            ->get();
+
+        $sameSchoolYearEnrollments = Enrollment::with('student')
+            ->whereHas('classArm.yearLevel.schoolYear', function ($query) use ($schoolYearId) {
+                $query->where('id', $schoolYearId);
+            })
+            ->get()
+            ->map(function ($enrollment) {
+                return [
+                    'id' => $enrollment->id,
+                    'lrn' => $enrollment->student->lrn,
+                    'firstName' => $enrollment->student->firstName,
+                    'middleName' => $enrollment->student->middleName,
+                    'lastName' => $enrollment->student->lastName,
+                ];
+            });
+
+        return Inertia::render('billing/billing-student-details', [
+            'enrollment' => $enrollment,
+            'availableDiscounts' => $availableDiscounts,
+            'availableBillings' => $availableBillings,
+            'sameSchoolYearEnrollments' => $sameSchoolYearEnrollments,
+        ]);
+    }
+
+    public function generateStudentBillingPDF(string $id)
+    {
+        $enrollment = Enrollment::with([
+            'student',
+            'classArm.yearLevel.schoolYear',
+            'billingItems.category',
+            'billingDiscounts.category',
+            'payments.billing.category',
+        ])->findOrFail($id);
+
+        $months = collect(range(6, 12))->merge(range(1, 5))->map(function ($m) {
+            return [
+                'value' => $m,
+                'label' => Carbon::create()->month($m)->format('F'),
+            ];
+        });
+
+        $currentMonth = Carbon::now()->month;
+        $totalDueThisMonth = 0;
+        $installments = [];
+
+        foreach ($enrollment->billingItems as $item) {
+            $pivot = $item->pivot;
+            if (!$pivot->month_installment || !$pivot->start_month || !$pivot->end_month)
+                continue;
+
+            $category = $item->category->name ?? '—';
+            $qty = $pivot->quantity ?? 1;
+            $rawAmount = floatval($item->amount) * $qty;
+
+            $matchingDiscounts = $enrollment->billingDiscounts->filter(fn($d) => $d->category->name === $category);
+            $discountTotal = 0;
+
+            foreach ($matchingDiscounts as $disc) {
+                if ($disc->value === 'fixed') {
+                    $discountTotal += floatval($disc->amount);
+                } elseif ($disc->value === 'percentage') {
+                    $discountTotal += ($rawAmount * floatval($disc->amount) / 100);
+                }
+            }
+
+            $totalAmount = $rawAmount - $discountTotal;
+            $monthlyBase = $totalAmount / $pivot->month_installment;
+
+            $installmentMonths = [];
+            for ($i = 0; $i < $pivot->month_installment; $i++) {
+                $installmentMonths[] = (($pivot->start_month - 1 + $i) % 12) + 1;
+            }
+
+            $itemPayments = $enrollment->payments
+                ->filter(fn($p) => $p->billing?->category?->name === $category)
+                ->sortBy('payment_date');
+
+            $totalPaid = $itemPayments->sum(fn($p) => floatval($p->amount));
+            $carryOver = 0;
+            $installmentMap = [];
+
+            foreach ($installmentMonths as $month) {
+                $due = $monthlyBase + $carryOver;
+                $paid = min($due, $totalPaid);
+                $totalPaid -= $paid;
+                $balance = $due - $paid;
+                $carryOver = $balance;
+                $installmentMap[$month] = [
+                    'due' => round($due, 2),
+                    'balance' => round($balance, 2),
+                ];
+            }
+
+            // Handle current month's due
+            $minCountingMonth = 6;
+            if ($currentMonth >= $minCountingMonth) {
+                if (isset($installmentMap[$currentMonth])) {
+                    $totalDueThisMonth += $installmentMap[$currentMonth]['balance'];
+                } else {
+                    $lastMonth = max(array_keys($installmentMap));
+                    if ($lastMonth >= $minCountingMonth && $currentMonth > $lastMonth) {
+                        $totalDueThisMonth += $installmentMap[$lastMonth]['balance'] ?? 0;
+                    }
+                }
+            }
+
+            $installments[] = [
+                'category' => $category,
+                'months' => $installmentMap,
+                'installment_count' => $pivot->month_installment,
+            ];
+        }
+
+        $pdf = Pdf::loadView('pdf.student-billing', [
+            'enrollment' => $enrollment,
+            'student' => $enrollment->student,
+            'months' => $months,
+            'installments' => $installments,
+            'currentMonth' => $currentMonth,
+            'totalDueThisMonth' => $totalDueThisMonth,
+        ])->setPaper('letter', 'portrait');
+
+        return $pdf->stream("billing-summary-{$enrollment->student->lastName}.pdf");
+    }
 }

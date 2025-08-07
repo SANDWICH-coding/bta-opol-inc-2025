@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet } from 'lucide-react';
+import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet, User } from 'lucide-react';
 import AppLogo from './app-logo';
 import { usePage } from '@inertiajs/react';
 
@@ -32,7 +32,7 @@ const footerNavItems: NavItem[] = [
 
 export function AppSidebar() {
     const { auth } = usePage().props;
-    const user = auth.user as { id: number, name: string, email: string, role: 'admin' | 'registrar' } | null;
+    const user = auth.user as { id: number, name: string, email: string, role: 'admin' | 'registrar' | 'billing' } | null;
 
     const mainNavItems: NavItem[] = user?.role === 'admin' ? [
         {
@@ -58,10 +58,15 @@ export function AppSidebar() {
         },
     ] : user?.role === 'billing' ? [
         {
-            title: 'Billing Management',
-            href: '/billing/',
-            icon: Wallet,
-        }
+            title: 'Dashboard',
+            href: '/billing/dashboard',
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Students',
+            href: '/billing/students',
+            icon: User,
+        },
     ]
         : [];
 

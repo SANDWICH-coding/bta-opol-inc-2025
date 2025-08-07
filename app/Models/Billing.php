@@ -27,5 +27,12 @@ class Billing extends Model
     {
         return $this->hasMany(BillingPayment::class);
     }
+
+    public function enrollments()
+    {
+        return $this->belongsToMany(Enrollment::class, 'enrollment_billing_items')
+            ->withPivot('quantity')
+            ->withTimestamps();
+    }
 }
 

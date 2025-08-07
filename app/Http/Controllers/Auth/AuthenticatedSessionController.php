@@ -37,7 +37,9 @@ class AuthenticatedSessionController extends Controller
         if ($user->role === 'admin') {
             return redirect()->route('admin.school-year.index');
         } elseif ($user->role === 'billing') {
-            return redirect()->route('billing.sy-list');
+            return redirect()->route('billing.dashboard');
+        } elseif ($user->role === 'registrar') {
+            return redirect()->route('registrar.enrollment.school-year-list');
         }
 
         // fallback route
