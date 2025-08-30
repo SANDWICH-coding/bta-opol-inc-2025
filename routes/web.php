@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BillingDiscController;
+use App\Http\Controllers\BillingExpensesController;
 use App\Http\Controllers\BillingPaymentController;
 use App\Http\Controllers\BillingUserController;
 use App\Http\Controllers\ClassArmController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\EnrollmentBillingItemController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\YearLevelController;
 use App\Http\Controllers\SchoolYearController;
+use App\Models\BillingExpenses;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Middleware\RoleMiddleware;
@@ -91,9 +93,15 @@ Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])
 
     Route::get('manage/student/{id}', [EnrollmentController::class, 'studentBillingDetails'])
         ->name('student');
-        
+
     Route::post('/payments/{payment}/update-remarks', [BillingPaymentController::class, 'updateRemarks'])
         ->name('payments.updateRemarks');
+
+    Route::get('expenses', [BillingExpensesController::class, 'index'])
+        ->name('expenses.index');
+
+    Route::post('expenses', [BillingExpensesController::class, 'store'])
+        ->name('expenses.store');
 });
 
 require __DIR__ . '/settings.php';

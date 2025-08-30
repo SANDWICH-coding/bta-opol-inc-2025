@@ -67,6 +67,11 @@ export function AppSidebar() {
             href: '/billing/students',
             icon: User,
         },
+        {
+            title: 'Expenses',
+            href: '/billing/expenses',
+            icon: Wallet,
+        }
     ]
         : [];
 
