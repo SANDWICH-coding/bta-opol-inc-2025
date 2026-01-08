@@ -98,22 +98,22 @@ export const InstallmentPlanTable: React.FC<InstallmentPlanTableProps> = ({
             installmentMap[month] = { due, balance };
         }
 
-        // ✅ Add balance from current month if exists
-        const MIN_COUNTING_MONTH = 6; // June
+        // ✅ Add balance from current month (works for Jan–Dec)
+        if (installmentMap[currentMonth]) {
+            totalDueThisMonth += installmentMap[currentMonth].balance;
+        } else {
+            // Carry over unpaid balance if installment period already ended
+            const monthsSorted = Object.keys(installmentMap).map(Number).sort((a, b) => a - b);
+            const lastMonth = monthsSorted[monthsSorted.length - 1];
 
-        if (currentMonth >= MIN_COUNTING_MONTH) {
-            if (installmentMap[currentMonth]) {
-                totalDueThisMonth += installmentMap[currentMonth].balance;
-            } else {
-                const maxMonth = Math.max(...Object.keys(installmentMap).map(Number));
-                if (maxMonth >= MIN_COUNTING_MONTH && currentMonth > maxMonth) {
-                    const lastBalance = installmentMap[maxMonth]?.balance || 0;
-                    if (lastBalance > 0) {
-                        totalDueThisMonth += lastBalance;
-                    }
+            if (currentMonth > lastMonth) {
+                const lastBalance = installmentMap[lastMonth]?.balance || 0;
+                if (lastBalance > 0) {
+                    totalDueThisMonth += lastBalance;
                 }
             }
         }
+
 
         return (
             <TableRow key={item.id}>

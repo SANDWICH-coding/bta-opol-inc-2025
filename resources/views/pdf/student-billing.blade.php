@@ -176,10 +176,13 @@
 
     <!-- Student Info -->
     <div class="card2">
-        <div class="student-name">{{ $student->firstName }} {{ $student->middleName ? $student->middleName[0] . '.' : '' }}
+        <div class="student-name">{{ $student->firstName }}
+            {{ $student->middleName ? $student->middleName[0] . '.' : '' }}
             {{ $student->lastName }}
         </div>
-        <div class="subtext"><span style="padding-left: 4px; padding-right: 4px; border: 1px solid #ccc; border-radius: 3px;">{{ $enrollment->classArm->yearLevel->yearLevelName }}</span> {{ $student->lrn ?? '' }}</div>
+        <div class="subtext"><span
+                style="padding-left: 4px; padding-right: 4px; border: 1px solid #ccc; border-radius: 3px;">{{ $enrollment->classArm->yearLevel->yearLevelName }}</span>
+            {{ $student->lrn ?? '' }}</div>
     </div>
 
     <!-- Billing Breakdown -->
@@ -248,23 +251,20 @@
 
         $currentMonthNum = Carbon::now()->month;
 
-        // Filter months from June (6) to March (3) only
+        // Academic year: June (6) to May (5)
         $filteredMonths = collect($months)->filter(function ($m) use ($currentMonthNum) {
-            $monthNum = (int) $m['value'];
+            $month = (int) $m['value'];
 
-            // Include months from June (6) to December (12)
-            if ($monthNum >= 6 && $monthNum <= 12) {
-                return $monthNum <= $currentMonthNum;
+            if ($currentMonthNum >= 6) {
+                // June–December
+                return $month >= 6 && $month <= $currentMonthNum;
             }
 
-            // Include months from January (1) to March (3)
-            if ($monthNum >= 1 && $monthNum <= 3) {
-                return $currentMonthNum <= 3 && $monthNum <= $currentMonthNum;
-            }
-
-            return false;
+            // January–May
+            return ($month >= 6 && $month <= 12) || ($month <= $currentMonthNum);
         });
     @endphp
+
 
     <div class="card2">
         <div class="section-title">

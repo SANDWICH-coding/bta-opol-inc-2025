@@ -769,18 +769,20 @@ class BillingUserController extends Controller
             }
 
             // Handle current month's due
-            $minCountingMonth = 6;
-            if ($currentMonth >= $minCountingMonth) {
-                if (isset($installmentMap[$currentMonth])) {
-                    $totalDueThisMonth += $installmentMap[$currentMonth]['balance'];
-                } else {
-                    $lastMonth = max(array_keys($installmentMap));
-                    if ($lastMonth >= $minCountingMonth && $currentMonth > $lastMonth) {
-                        $totalDueThisMonth += $installmentMap[$lastMonth]['balance'] ?? 0;
-                    }
+            if (isset($installmentMap[$currentMonth])) {
+                $totalDueThisMonth += $installmentMap[$currentMonth]['balance'];
+            } else {
+                // Carry over last unpaid balance if installment already ended
+                $monthsSorted = array_keys($installmentMap);
+                sort($monthsSorted);
+
+                $lastMonth = end($monthsSorted);
+
+                if ($currentMonth > $lastMonth) {
+                    $totalDueThisMonth += $installmentMap[$lastMonth]['balance'] ?? 0;
                 }
             }
-
+            
             $installments[] = [
                 'category' => $category,
                 'months' => $installmentMap,
