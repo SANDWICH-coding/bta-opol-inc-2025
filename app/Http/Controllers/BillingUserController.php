@@ -769,20 +769,35 @@ class BillingUserController extends Controller
             }
 
             // Handle current month's due
+            // ===============================
+// ✅ ACADEMIC YEAR ORDER (June → May)
+// ===============================
+            $academicOrder = function (int $month): int {
+                return $month >= 6 ? $month : $month + 12;
+            };
+
+            $currentOrder = $academicOrder($currentMonth);
+
+            // Sort installment months using academic order
+            $orderedMonths = array_keys($installmentMap);
+            usort($orderedMonths, fn($a, $b) => $academicOrder($a) <=> $academicOrder($b));
+
+            // ===============================
+// ✅ TOTAL DUE (FIXED FOR JANUARY)
+// ===============================
             if (isset($installmentMap[$currentMonth])) {
+                // Normal case: current month exists
                 $totalDueThisMonth += $installmentMap[$currentMonth]['balance'];
             } else {
-                // Carry over last unpaid balance if installment already ended
-                $monthsSorted = array_keys($installmentMap);
-                sort($monthsSorted);
+                // Carry over unpaid balance if installment already ended
+                $lastMonth = end($orderedMonths);
 
-                $lastMonth = end($monthsSorted);
-
-                if ($currentMonth > $lastMonth) {
+                if ($currentOrder > $academicOrder($lastMonth)) {
                     $totalDueThisMonth += $installmentMap[$lastMonth]['balance'] ?? 0;
                 }
             }
-            
+
+
             $installments[] = [
                 'category' => $category,
                 'months' => $installmentMap,
