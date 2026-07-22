@@ -326,7 +326,7 @@
     <div style="margin-top: 60px; text-align: right;">
         <div style="display: inline-block; text-align: center;">
             <div style="border-bottom: 1px solid #000; width: 200px; padding-bottom: 4px; margin-bottom: 4px;"></div>
-            <div style="font-size: 12px;">MIRA LIZA L. MAGOLTA</div>
+            <div style="font-size: 12px;">JIZAME L. LIBRADA</div>
             <div style="font-size: 9.5px; font-style: italic;">Billing in charge</div>
         </div>
     </div>
