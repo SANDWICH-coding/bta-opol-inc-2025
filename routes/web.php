@@ -5,11 +5,13 @@ use App\Http\Controllers\BillingDiscController;
 use App\Http\Controllers\BillingExpensesController;
 use App\Http\Controllers\BillingPaymentController;
 use App\Http\Controllers\BillingUserController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\ClassArmController;
 use App\Http\Controllers\EnrollBillingDiscController;
 use App\Http\Controllers\EnrollmentBillingItemController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\YearLevelController;
+use App\Http\Controllers\ParentController;
 use App\Http\Controllers\SchoolYearController;
 use App\Models\BillingExpenses;
 use Illuminate\Support\Facades\Route;
@@ -20,20 +22,53 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
-    Route::resource('school-year', SchoolYearController::class);
-    Route::resource('year-level', YearLevelController::class);
-    Route::resource('class-arm', ClassArmController::class);
-    Route::resource('billing', BillingController::class);
-    Route::resource('billing-discount', BillingDiscController::class);
-});
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth', 'role:admin'])
+    ->group(function () {
 
+        Route::resource('school-year', SchoolYearController::class);
+        Route::resource('year-level', YearLevelController::class);
+        Route::resource('class-arm', ClassArmController::class);
+        Route::resource('billing', BillingController::class);
+        Route::resource('billing-discount', BillingDiscController::class);
+
+        Route::resource('users', UserController::class);
+
+        // User management actions
+        Route::patch('/users/{user}/name', [UserController::class, 'updateName'])
+            ->name('users.name');
+
+        Route::patch('/users/{user}/email', [UserController::class, 'updateEmail'])
+            ->name('users.email');
+
+        Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])
+            ->name('users.role');
+
+        Route::patch('/users/{user}/password', [UserController::class, 'resetPassword'])
+            ->name('users.password');
+
+        // Parent -> Student
+        Route::post('/users/{user}/students', [UserController::class, 'addStudent'])
+            ->name('users.students.add');
+
+        Route::delete('/users/{user}/students/{student}', [UserController::class, 'removeStudent'])
+            ->name('users.students.remove');
+    });
+
+
+    
 Route::prefix('user')->name('user.')->middleware(['auth', 'role:user'])->group(function () {
     Route::resource('school-year', SchoolYearController::class);
+
+Route::get('dashboard', function () {
+    return Inertia::render('user/dashboard');
+})->name('dashboard');
+
 });
 
 Route::prefix('registrar')->name('registrar.')->middleware(['auth', 'role:registrar'])->group(function () {
-    Route::get('', [EnrollmentController::class, 'schoolYearList'])
+    Route::get('/sy', [EnrollmentController::class, 'schoolYearList'])
         ->name('enrollment.school-year-list');
 
     Route::get('school-year-setup/{id}', [EnrollmentController::class, 'schoolYearSetup'])
@@ -53,6 +88,8 @@ Route::prefix('registrar')->name('registrar.')->middleware(['auth', 'role:regist
 
     Route::post('enrollment/student/{id}/update-birth-date', [EnrollmentController::class, 'updateBirthDate'])
         ->name('enrollment.student.update-birth-date');
+
+        Route::get('enrollment-analytics', [EnrollmentController::class, 'enrollmentAnalytics']);
 
 
     Route::resource('class-arm', ClassArmController::class);
@@ -102,6 +139,14 @@ Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])
 
     Route::post('expenses', [BillingExpensesController::class, 'store'])
         ->name('expenses.store');
+});
+
+Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->group(function () {
+        Route::get('dashboard', [ParentController::class, 'index'])
+        ->name('dashboard');
+
+        Route::get('/students/{enrollment}/billing', [ParentController::class, 'show'])
+        ->name('student.billing');
 });
 
 require __DIR__ . '/settings.php';

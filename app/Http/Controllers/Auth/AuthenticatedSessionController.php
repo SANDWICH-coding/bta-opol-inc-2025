@@ -40,10 +40,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('billing.dashboard');
         } elseif ($user->role === 'registrar') {
             return redirect()->route('registrar.enrollment.school-year-list');
+        } elseif ($user->role === 'parent') {
+            return redirect()->route('parent.dashboard');
         }
 
         // fallback route
-        return redirect()->route('dashboard');
+        return redirect()->route('user.dashboard');
     }
 
 

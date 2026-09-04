@@ -19,77 +19,232 @@ use Storage;
 use Str;
 use ZipArchive;
 
-
 class BillingUserController extends Controller
 {
-    public function billingDashboard(Request $request)
-    {
-        $schoolYears = SchoolYear::orderByDesc('name')->get();
-        $selectedSY = $request->input('school_year', $schoolYears->first()?->name);
+public function billingDashboard(Request $request)
+{
+    $schoolYears = SchoolYear::orderByDesc('name')->get();
 
-        $paymentStats = BillingPayment::query()
-            ->whereHas('enrollment.classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
-                $q->where('name', $selectedSY);
-            })
-            ->select('payment_method', DB::raw('SUM(amount) as total'))
-            ->groupBy('payment_method')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'payment_method' => $item->payment_method,
-                    'total' => (float) $item->total,
-                ];
-            });
+    $selectedSY = $request->input(
+        'school_year',
+        $schoolYears->first()?->name
+    );
 
-        $uniqueORCount = BillingPayment::whereHas('enrollment.classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
+    /*
+    |--------------------------------------------------------------------------
+    | Selected School Year - Payment Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    $paymentStats = BillingPayment::query()
+        ->whereHas('enrollment.classArm.yearLevel.schoolYear', function ($q) use ($selectedSY) {
             $q->where('name', $selectedSY);
-        })->distinct('or_number')->count('or_number');
+        })
+        ->select(
+            'payment_method',
+            DB::raw('SUM(amount) as total')
+        )
+        ->groupBy('payment_method')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'payment_method' => $item->payment_method,
+                'total' => (float) $item->total,
+            ];
+        });
 
-        $categoryTotals = DB::table('billing_payments')
-            ->join('billings', 'billing_payments.billing_id', '=', 'billings.id')
-            ->join('billing_cats', 'billings.billing_cat_id', '=', 'billing_cats.id')
-            ->join('enrollments', 'billing_payments.enrollment_id', '=', 'enrollments.id')
-            ->join('class_arms', 'enrollments.class_arm_id', '=', 'class_arms.id')
-            ->join('year_levels', 'class_arms.year_level_id', '=', 'year_levels.id')
-            ->join('school_years', 'year_levels.school_year_id', '=', 'school_years.id')
-            ->where('school_years.name', $selectedSY)
-            ->select('billing_cats.name as category', DB::raw('SUM(billing_payments.amount) as total'))
-            ->groupBy('billing_cats.name')
-            ->get();
+    /*
+    |--------------------------------------------------------------------------
+    | Unique OR Count
+    |--------------------------------------------------------------------------
+    */
 
-        $today = Carbon::today();
+    $uniqueORCount = BillingPayment::whereHas(
+        'enrollment.classArm.yearLevel.schoolYear',
+        function ($q) use ($selectedSY) {
+            $q->where('name', $selectedSY);
+        }
+    )
+        ->distinct('or_number')
+        ->count('or_number');
 
-        // 1. Summary by Payment Method
-        $summaryByPaymentMethod = DB::table('billing_payments')
-            ->whereDate('payment_date', $today)
-            ->select('payment_method', DB::raw('SUM(amount) as total'))
-            ->groupBy('payment_method')
-            ->get();
+    /*
+    |--------------------------------------------------------------------------
+    | Billing Category Totals
+    |--------------------------------------------------------------------------
+    */
 
-        // 2. Summary by Billing Category
-        $summaryByCategory = DB::table('billing_payments')
-            ->join('billings', 'billing_payments.billing_id', '=', 'billings.id')
-            ->join('billing_cats', 'billings.billing_cat_id', '=', 'billing_cats.id')
-            ->whereDate('billing_payments.payment_date', $today)
-            ->select('billing_cats.name as category', DB::raw('SUM(billing_payments.amount) as total'))
-            ->groupBy('billing_cats.name')
-            ->get();
+    $categoryTotals = DB::table('billing_payments')
+        ->join(
+            'billings',
+            'billing_payments.billing_id',
+            '=',
+            'billings.id'
+        )
+        ->join(
+            'billing_cats',
+            'billings.billing_cat_id',
+            '=',
+            'billing_cats.id'
+        )
+        ->join(
+            'enrollments',
+            'billing_payments.enrollment_id',
+            '=',
+            'enrollments.id'
+        )
+        ->join(
+            'class_arms',
+            'enrollments.class_arm_id',
+            '=',
+            'class_arms.id'
+        )
+        ->join(
+            'year_levels',
+            'class_arms.year_level_id',
+            '=',
+            'year_levels.id'
+        )
+        ->join(
+            'school_years',
+            'year_levels.school_year_id',
+            '=',
+            'school_years.id'
+        )
+        ->where('school_years.name', $selectedSY)
+        ->select(
+            'billing_cats.name as category',
+            DB::raw('SUM(billing_payments.amount) as total')
+        )
+        ->groupBy('billing_cats.name')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'category' => $item->category,
+                'total' => (float) $item->total,
+            ];
+        });
 
-        $uniqueORCountToday = BillingPayment::whereDate('payment_date', $today)
-            ->distinct('or_number')
-            ->count('or_number');
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Payment Totals - SELECTED SCHOOL YEAR
+    |--------------------------------------------------------------------------
+    */
 
-        return Inertia::render('billing/billing-dashboard', [
-            'paymentStats' => $paymentStats,
-            'categoryTotals' => $categoryTotals,
-            'uniqueORCount' => $uniqueORCount,
-            'uniqueORCountToday' => $uniqueORCountToday,
-            'schoolYears' => $schoolYears,
-            'selectedSchoolYear' => $selectedSY,
-            'summaryByPaymentMethod' => $summaryByPaymentMethod,
-            'summaryByCategory' => $summaryByCategory,
-        ]);
-    }
+    $dailyPaymentTotals = DB::table('billing_payments')
+        ->join(
+            'enrollments',
+            'billing_payments.enrollment_id',
+            '=',
+            'enrollments.id'
+        )
+        ->join(
+            'class_arms',
+            'enrollments.class_arm_id',
+            '=',
+            'class_arms.id'
+        )
+        ->join(
+            'year_levels',
+            'class_arms.year_level_id',
+            '=',
+            'year_levels.id'
+        )
+        ->join(
+            'school_years',
+            'year_levels.school_year_id',
+            '=',
+            'school_years.id'
+        )
+        ->where('school_years.name', $selectedSY)
+        ->select(
+            DB::raw('DATE(billing_payments.payment_date) as date'),
+            DB::raw('SUM(billing_payments.amount) as total'),
+            DB::raw('COUNT(DISTINCT billing_payments.or_number) as or_count')
+        )
+        ->groupBy(
+            DB::raw('DATE(billing_payments.payment_date)')
+        )
+        ->orderBy('date')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'date' => $item->date,
+                'total' => (float) $item->total,
+                'or_count' => (int) $item->or_count,
+            ];
+        })
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Today's Summary
+    |--------------------------------------------------------------------------
+    */
+
+    $today = Carbon::today();
+
+    $summaryByPaymentMethod = DB::table('billing_payments')
+        ->whereDate('payment_date', $today)
+        ->select(
+            'payment_method',
+            DB::raw('SUM(amount) as total')
+        )
+        ->groupBy('payment_method')
+        ->get();
+
+    $summaryByCategory = DB::table('billing_payments')
+        ->join(
+            'billings',
+            'billing_payments.billing_id',
+            '=',
+            'billings.id'
+        )
+        ->join(
+            'billing_cats',
+            'billings.billing_cat_id',
+            '=',
+            'billing_cats.id'
+        )
+        ->whereDate(
+            'billing_payments.payment_date',
+            $today
+        )
+        ->select(
+            'billing_cats.name as category',
+            DB::raw('SUM(billing_payments.amount) as total')
+        )
+        ->groupBy('billing_cats.name')
+        ->get();
+
+    $uniqueORCountToday = BillingPayment::whereDate(
+        'payment_date',
+        $today
+    )
+        ->distinct('or_number')
+        ->count('or_number');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inertia Response
+    |--------------------------------------------------------------------------
+    */
+
+    return Inertia::render('billing/billing-dashboard', [
+        'paymentStats' => $paymentStats,
+        'categoryTotals' => $categoryTotals,
+        'uniqueORCount' => $uniqueORCount,
+        'uniqueORCountToday' => $uniqueORCountToday,
+
+        'schoolYears' => $schoolYears,
+        'selectedSchoolYear' => $selectedSY,
+
+        'summaryByPaymentMethod' => $summaryByPaymentMethod,
+        'summaryByCategory' => $summaryByCategory,
+
+        'dailyPaymentTotals' => $dailyPaymentTotals,
+    ]);
+}
 
     public function students(Request $request)
     {

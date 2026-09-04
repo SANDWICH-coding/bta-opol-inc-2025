@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet, User } from 'lucide-react';
+import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet, User, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 import { usePage } from '@inertiajs/react';
 
@@ -41,21 +41,31 @@ export function AppSidebar() {
             icon: University,
         },
         {
-            title: 'Enrollment',
-            href: '/registrar/',
-            icon: GraduationCap,
+            title: 'Users',
+            href: '/admin/users',
+            icon: Users,
         },
-        {
-            title: 'Billing Management',
-            href: '/billing/',
-            icon: Wallet,
-        }
+        // {
+        //     title: 'Enrollment',
+        //     href: '/registrar/',
+        //     icon: GraduationCap,
+        // },
+        // {
+        //     title: 'Billing Management',
+        //     href: '/billing/',
+        //     icon: Wallet,
+        // }
     ] : user?.role === 'registrar' ? [
         {
             title: 'Registrar',
-            href: '/registrar/students',
+            href: '/registrar/sy/',
             icon: GraduationCap,
         },
+        {
+            title: 'Analytics',
+            href: '/registrar/enrollment-analytics',
+            icon: LayoutGrid,
+        }
     ] : user?.role === 'billing' ? [
         {
             title: 'Dashboard',
@@ -72,8 +82,21 @@ export function AppSidebar() {
             href: '/billing/expenses',
             icon: Wallet,
         }
+    ] : user?.role === 'parent' ? [
+        {
+            title: 'Dashboard',
+            href: '/parent/dashboard',
+            icon: LayoutGrid,
+        }
     ]
-        : [];
+        : user?.role === 'user' ? [
+            {
+                title: 'Dashboard',
+                href: '/user/dashboard',
+                icon: LayoutGrid,
+            }
+        ]
+            : [];
 
     return (
         <Sidebar collapsible="offcanvas" variant="sidebar">

@@ -21,4 +21,15 @@ class Student extends Model
     {
         return $this->hasMany(Enrollment::class);
     }
+
+    public function parents()
+{
+    return $this->belongsToMany(
+        User::class,
+        'parent_student',
+        'student_id',
+        'parent_id'
+    )->withTimestamps();
+}
+
 }
