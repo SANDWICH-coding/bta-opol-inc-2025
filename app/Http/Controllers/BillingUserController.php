@@ -21,6 +21,40 @@ use ZipArchive;
 
 class BillingUserController extends Controller
 {
+
+public function officialReceipts(Request $request)
+{
+    $search = trim($request->input('search', ''));
+
+    $payments = BillingPayment::query()
+        ->with([
+            'enrollment.student',
+            'enrollment.classArm.yearLevel.schoolYear',
+            'billing.billingCat',
+            'billing.yearLevel.schoolYear',
+        ])
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('or_number', 'like', "%{$search}%")
+                    ->orWhereDate('payment_date', $search);
+            });
+        })
+        ->orderByDesc('payment_date')
+        ->orderByDesc('id')
+        ->paginate(20)
+        ->withQueryString();
+
+    return Inertia::render('billing/official-receipts', [
+        'payments' => $payments,
+        'filters' => [
+            'search' => $search,
+        ],
+    ]);
+}
+
+
+
+
 public function billingDashboard(Request $request)
 {
     $schoolYears = SchoolYear::orderByDesc('name')->get();

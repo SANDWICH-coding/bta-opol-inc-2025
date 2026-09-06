@@ -17,6 +17,11 @@ class BillingPayment extends Model
         'amount',
     ];
 
+        protected $casts = [
+        'payment_date' => 'date',
+        'amount' => 'decimal:2',
+    ];
+
     public function enrollment()
     {
         return $this->belongsTo(Enrollment::class);
@@ -25,6 +30,18 @@ class BillingPayment extends Model
     public function billing()
     {
         return $this->belongsTo(Billing::class);
+    }
+
+    public function billingItems(): HasMany
+    {
+        return $this->hasMany(
+            EnrollmentBillingItem::class,
+            'billing_id',
+            'billing_id'
+        )->whereColumn(
+            'enrollment_id',
+            'billing_payments.enrollment_id'
+        );
     }
 
 }

@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet, User, Users } from 'lucide-react';
+import { University, GraduationCap, Facebook, AtSign, LayoutGrid, Wallet, User, Users, ReceiptText } from 'lucide-react';
 import AppLogo from './app-logo';
 import { usePage } from '@inertiajs/react';
 
@@ -81,6 +81,11 @@ export function AppSidebar() {
             title: 'Expenses',
             href: '/billing/expenses',
             icon: Wallet,
+        },
+        {
+            title: 'Official Receipts',
+            href: '/billing/official-receipts',
+            icon: ReceiptText,
         }
     ] : user?.role === 'parent' ? [
         {

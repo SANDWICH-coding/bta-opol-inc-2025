@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class Billing extends Model
 {
@@ -11,6 +14,10 @@ class Billing extends Model
         'billing_cat_id',
         'description',
         'amount',
+    ];
+
+        protected $casts = [
+        'amount' => 'decimal:2',
     ];
 
     public function yearLevel()
@@ -33,6 +40,11 @@ class Billing extends Model
         return $this->belongsToMany(Enrollment::class, 'enrollment_billing_items')
             ->withPivot('quantity')
             ->withTimestamps();
+    }
+
+        public function billingCat(): BelongsTo
+    {
+        return $this->belongsTo(BillingCat::class);
     }
 }
 

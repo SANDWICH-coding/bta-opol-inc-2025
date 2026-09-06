@@ -8,4 +8,9 @@ class BillingCat extends Model
 {
     //
     protected $fillable = ['name'];
+
+        public function billings(): HasMany
+    {
+        return $this->hasMany(Billing::class);
+    }
 }

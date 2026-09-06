@@ -139,6 +139,9 @@ Route::prefix('billing')->name('billing.')->middleware(['auth', 'role:billing'])
 
     Route::post('expenses', [BillingExpensesController::class, 'store'])
         ->name('expenses.store');
+
+        Route::get('official-receipts', [BillingUserController::class, 'officialReceipts'])
+        ->name('official-receipts.index');
 });
 
 Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->group(function () {
