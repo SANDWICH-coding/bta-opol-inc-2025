@@ -476,7 +476,7 @@ export default function BillingOfficialReceipts() {
                                 </h2>
 
                                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                    Search using an OR number or payment date.
+                                    Search using an OR number
                                 </p>
                             </div>
 
